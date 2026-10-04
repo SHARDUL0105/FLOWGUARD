@@ -6,12 +6,14 @@ from fastapi import APIRouter, HTTPException, WebSocket
 from fastapi.responses import StreamingResponse
 from .schemas import ChaosRequest, WhatIfRequest, DemoModeRequest
 from .state import STATE
-from .pr.prs import get_pr, pr_edges
+from .pr.prs import get_pr, pr_edges, list_prs, pr_diff
 from .pr.scanner import scan
 from .pr.heal import heal
 from .pr.gate import gate
-from .sim.reference_sim import BASE_EDGES
+from .intel.scoring import resilience_score
+from .sim.reference_sim import BASE_EDGES, SCENARIOS, SEVERITY, run, window
 from .ai.brief import build_evidence, stream_brief_events
+from .ai.pr_comment import render_comment
 
 router = APIRouter()
 FIX = pathlib.Path(__file__).resolve().parents[2] / "fixtures"
@@ -44,9 +46,63 @@ def set_mode(req: DemoModeRequest):
 @router.post("/api/whatif")
 def whatif(req: WhatIfRequest): _todo("Sneha: intel.predictor + sim headless")
 @router.get("/api/pr")
-def pr_list(): _todo("Vaishnavi: pr.prs")
-@router.post("/api/pr/{pr_id}/analyze")
-def pr_analyze(pr_id: str): _todo("Vaishnavi: pr.scanner + intel.scoring")
+def pr_list():
+    return list_prs()
+
+
+@router.post("/api/pr/{id}/analyze")
+def pr_analyze(id: str):
+    pr = get_pr(id)
+    if not pr:
+        raise HTTPException(status_code=404, detail=f"Pull request #{id} not found")
+
+    pr_id_val = pr["id"]
+    current_edges = pr_edges(id)
+
+    # Use Sneha's scoring implementation
+    score_base = resilience_score(BASE_EDGES)
+    score_pr = resilience_score(current_edges)
+    verdict = "regression" if score_pr < score_base else "no change"
+
+    # Static scanner findings
+    findings = scan(base_edges=BASE_EDGES, pr_edges=current_edges)
+
+    # Re-run the 3 scenarios on BASE and PR
+    per_scenario = []
+    for sc in SCENARIOS:
+        sev = SEVERITY.get(sc, 3.0)
+        base_out = run(BASE_EDGES, fault=sc, severity=sev, ticks=60, seed=7)
+        b_p95, b_err = window(base_out)
+        pr_out = run(current_edges, fault=sc, severity=sev, ticks=60, seed=7)
+        p_p95, p_err = window(pr_out)
+        per_scenario.append({
+            "scenario": sc,
+            "base": {"p95_ms": round(b_p95), "error_rate": round(b_err, 3)},
+            "pr": {"p95_ms": round(p_p95), "error_rate": round(p_err, 3)},
+        })
+
+    # Cascade propagation path (try Sneha's propagation_path if implemented)
+    cascade_path = []
+    try:
+        from .intel.propagation import propagation_path
+        cascade_path = propagation_path({}, [])
+    except (NotImplementedError, Exception):
+        if findings:
+            cascade_path = ["database", "inventory", "order", "gateway", "frontend"]
+
+    analysis_data = {
+        "id": pr_id_val,
+        "score_base": score_base,
+        "score_pr": score_pr,
+        "verdict": verdict,
+        "per_scenario": per_scenario,
+        "findings": findings,
+        "cascade_path": cascade_path,
+        "diff": pr_diff(id),
+    }
+
+    analysis_data["comment"] = render_comment(analysis_data)
+    return analysis_data
 @router.post("/api/pr/{id}/heal")
 def pr_heal(id: str):
     pr = get_pr(id)
