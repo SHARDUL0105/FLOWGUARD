@@ -4,6 +4,11 @@ import asyncio, json, pathlib
 from fastapi import APIRouter, HTTPException, WebSocket
 from .schemas import ChaosRequest, WhatIfRequest, DemoModeRequest
 from .state import STATE
+from .pr.prs import get_pr, pr_edges
+from .pr.scanner import scan
+from .pr.heal import heal
+from .pr.gate import gate
+from .sim.reference_sim import BASE_EDGES
 
 router = APIRouter()
 FIX = pathlib.Path(__file__).resolve().parents[2] / "fixtures"
@@ -39,8 +44,33 @@ def whatif(req: WhatIfRequest): _todo("Sneha: intel.predictor + sim headless")
 def pr_list(): _todo("Vaishnavi: pr.prs")
 @router.post("/api/pr/{pr_id}/analyze")
 def pr_analyze(pr_id: str): _todo("Vaishnavi: pr.scanner + intel.scoring")
-@router.post("/api/pr/{pr_id}/heal")
-def pr_heal(pr_id: str): _todo("Vaishnavi: pr.heal + pr.gate")
+@router.post("/api/pr/{id}/heal")
+def pr_heal(id: str):
+    pr = get_pr(id)
+    if not pr:
+        raise HTTPException(status_code=404, detail=f"Pull request #{id} not found")
+
+    pr_id_val = pr["id"]
+    current_edges = pr_edges(id)
+    findings = scan(base_edges=BASE_EDGES, pr_edges=current_edges)
+    heal_res = heal(pr_edges=current_edges, findings=findings)
+    gate_res = gate(
+        pr_edges=current_edges,
+        patched_edges=heal_res.edges,
+        patch_diff=heal_res.patch_diff,
+        pr_id=pr_id_val,
+    )
+
+    return {
+        "id": gate_res["id"],
+        "gate": gate_res["gate"],
+        "reason": gate_res["reason"],
+        "score_before": gate_res["score_before"],
+        "score_after": gate_res["score_after"],
+        "patch_diff": gate_res["patch_diff"],
+        "per_scenario_after": gate_res["per_scenario_after"],
+        "verified_under": gate_res["verified_under"],
+    }
 @router.get("/api/brief")
 def brief(scenario: str = "", pr: str = ""): _todo("Vaishnavi: ai.brief (SSE)")
 

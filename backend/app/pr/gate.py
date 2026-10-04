@@ -135,25 +135,33 @@ def verify_fix(
 
 
 def gate(
-    pr_edges_or_score_pr: Any,
+    pr_edges_or_score_pr: Any = None,
     patched_edges_or_score_after: Any = None,
     patch_diff_or_per_pr: Any = "",
     pr_id_or_per_after: Any = None,
     healthy_ratio_or_base: Any = None,
+    *,
+    pr_edges: Any = None,
+    patched_edges: Any = None,
+    patch_diff: str = "",
+    pr_id: Any = None,
     **kwargs: Any,
 ) -> Dict[str, Any]:
     """Unified gate entry point supporting both full re-run verification
     and direct metric evaluation.
     """
+    actual_pr_edges = pr_edges if pr_edges is not None else pr_edges_or_score_pr
+    actual_patched_edges = patched_edges if patched_edges is not None else patched_edges_or_score_after
+
     # Case A: Called with numerical scores and precalculated dicts
-    if isinstance(pr_edges_or_score_pr, (int, float)) and isinstance(
-        patched_edges_or_score_after, (int, float)
+    if isinstance(actual_pr_edges, (int, float)) and isinstance(
+        actual_patched_edges, (int, float)
     ):
-        score_pr = int(pr_edges_or_score_pr)
-        score_after = int(patched_edges_or_score_after)
-        per_pr = patch_diff_or_per_pr if isinstance(patch_diff_or_per_pr, dict) else {}
-        per_after = pr_id_or_per_after if isinstance(pr_id_or_per_after, dict) else {}
-        ratio = float(healthy_ratio_or_base) if healthy_ratio_or_base is not None else 1.0
+        score_pr = int(actual_pr_edges)
+        score_after = int(actual_patched_edges)
+        per_pr = patch_diff_or_per_pr if isinstance(patch_diff_or_per_pr, dict) else kwargs.get("per_scenario_pr", {})
+        per_after = pr_id_or_per_after if isinstance(pr_id_or_per_after, dict) else kwargs.get("per_scenario_after", {})
+        ratio = float(healthy_ratio_or_base) if healthy_ratio_or_base is not None else kwargs.get("healthy_ratio", 1.0)
 
         status, reason = evaluate_acceptance(
             score_pr=score_pr,
@@ -172,8 +180,6 @@ def gate(
         }
 
     # Case B: Called with edge configs (pr_edges, patched_edges, patch_diff, pr_id)
-    pr_edges = pr_edges_or_score_pr
-    patched_edges = patched_edges_or_score_after
-    patch_diff = patch_diff_or_per_pr if isinstance(patch_diff_or_per_pr, str) else ""
-    pr_id = pr_id_or_per_after if not isinstance(pr_id_or_per_after, dict) else kwargs.get("pr_id")
-    return verify_fix(pr_edges=pr_edges, patched_edges=patched_edges, patch_diff=patch_diff, pr_id=pr_id)
+    actual_diff = patch_diff or (patch_diff_or_per_pr if isinstance(patch_diff_or_per_pr, str) else "")
+    actual_pr_id = pr_id if pr_id is not None else (pr_id_or_per_after if not isinstance(pr_id_or_per_after, dict) else kwargs.get("pr_id"))
+    return verify_fix(pr_edges=actual_pr_edges, patched_edges=actual_patched_edges, patch_diff=actual_diff, pr_id=actual_pr_id)
