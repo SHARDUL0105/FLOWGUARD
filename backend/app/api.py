@@ -1,7 +1,9 @@
 """Owner: Abhiraj. All routes. Working: health, topology, chaos/reset (state only), ws (healthy stub).
 Everything else returns 501 until the owner fills it in."""
 import asyncio, json, pathlib
+from typing import Optional
 from fastapi import APIRouter, HTTPException, WebSocket
+from fastapi.responses import StreamingResponse
 from .schemas import ChaosRequest, WhatIfRequest, DemoModeRequest
 from .state import STATE
 from .pr.prs import get_pr, pr_edges
@@ -9,6 +11,7 @@ from .pr.scanner import scan
 from .pr.heal import heal
 from .pr.gate import gate
 from .sim.reference_sim import BASE_EDGES
+from .ai.brief import build_evidence, stream_brief_events
 
 router = APIRouter()
 FIX = pathlib.Path(__file__).resolve().parents[2] / "fixtures"
@@ -72,7 +75,27 @@ def pr_heal(id: str):
         "verified_under": gate_res["verified_under"],
     }
 @router.get("/api/brief")
-def brief(scenario: str = "", pr: str = ""): _todo("Vaishnavi: ai.brief (SSE)")
+async def brief(scenario: Optional[str] = None, pr: Optional[str] = None):
+    sc_val = scenario.strip() if scenario else None
+    pr_val = pr.strip() if pr else None
+    if not sc_val and not pr_val:
+        sc_val = "db_latency"
+
+    evidence = build_evidence(scenario=sc_val, pr_id=pr_val)
+
+    async def event_generator():
+        async for event in stream_brief_events(evidence, stream_delay=0.01):
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 @router.websocket("/ws")
 async def ws(sock: WebSocket):
