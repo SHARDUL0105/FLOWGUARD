@@ -1,0 +1,96 @@
+{
+  "nodes": [
+    {
+      "id": "frontend",
+      "label": "Frontend",
+      "layer": 0,
+      "base_ms": 20,
+      "capacity_rps": 500
+    },
+    {
+      "id": "gateway",
+      "label": "Gateway",
+      "layer": 1,
+      "base_ms": 15,
+      "capacity_rps": 400
+    },
+    {
+      "id": "order",
+      "label": "Order",
+      "layer": 2,
+      "base_ms": 40,
+      "capacity_rps": 250
+    },
+    {
+      "id": "inventory",
+      "label": "Inventory",
+      "layer": 3,
+      "base_ms": 30,
+      "capacity_rps": 250
+    },
+    {
+      "id": "payment",
+      "label": "Payment",
+      "layer": 3,
+      "base_ms": 60,
+      "capacity_rps": 200
+    },
+    {
+      "id": "database",
+      "label": "Database",
+      "layer": 4,
+      "base_ms": 10,
+      "capacity_rps": 600
+    }
+  ],
+  "edges": [
+    {
+      "source": "frontend",
+      "target": "gateway",
+      "timeout_ms": 3000,
+      "retries": 0,
+      "breaker": false,
+      "fallback": false
+    },
+    {
+      "source": "gateway",
+      "target": "order",
+      "timeout_ms": 2500,
+      "retries": 0,
+      "breaker": false,
+      "fallback": false
+    },
+    {
+      "source": "order",
+      "target": "inventory",
+      "timeout_ms": 700,
+      "retries": 1,
+      "breaker": true,
+      "fallback": true
+    },
+    {
+      "source": "order",
+      "target": "payment",
+      "timeout_ms": 900,
+      "retries": 0,
+      "breaker": true,
+      "fallback": true
+    },
+    {
+      "source": "inventory",
+      "target": "database",
+      "timeout_ms": 400,
+      "retries": 1,
+      "breaker": false,
+      "fallback": false
+    },
+    {
+      "source": "payment",
+      "target": "database",
+      "timeout_ms": 400,
+      "retries": 0,
+      "breaker": false,
+      "fallback": false
+    }
+  ]
+}

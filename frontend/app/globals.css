@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html { background: #FAFAF7; scroll-behavior: auto; }
+body { background: #FAFAF7; color: #101412; font-family: var(--font-sans), system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+.num { font-family: var(--font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+::selection { background: #DCEFE7; color: #0B4F3A; }
+
+/* React Flow: transparent canvas, quiet attribution */
+.react-flow { background: transparent !important; }
+.react-flow__attribution { background: transparent !important; opacity: .4; font-size: 9px; }
+.react-flow__attribution a { color: #6E756F !important; }
+.react-flow__pane, .react-flow__node { cursor: default; }
+
+* { scrollbar-width: thin; scrollbar-color: #D8DAD3 transparent; }
+:focus-visible { outline: 1.5px solid #0B4F3A; outline-offset: 3px; }
+
+@keyframes caret { 50% { opacity: 0; } }
+.caret::after { content: ""; display: inline-block; width: 1px; height: 1em; margin-left: 2px; background: currentColor; vertical-align: -0.12em; animation: caret 1s steps(1) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

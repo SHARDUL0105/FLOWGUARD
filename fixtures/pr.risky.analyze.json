@@ -1,0 +1,29 @@
+{
+  "id": 12,
+  "score_base": 84,
+  "score_pr": 32,
+  "verdict": "regression",
+  "findings": [
+    {
+      "rule": "R1_TIMEOUT",
+      "severity": "high",
+      "edge": "order->inventory",
+      "message": "No effective timeout on order->inventory; callers can hang until the gateway gives up.",
+      "evidence": "timeout_ms: None"
+    },
+    {
+      "rule": "R2_RETRY_STORM",
+      "severity": "high",
+      "edge": "order->inventory",
+      "message": "4 retries without backoff multiplies load on a struggling dependency.",
+      "evidence": "retries: 4"
+    },
+    {
+      "rule": "R3_NO_FALLBACK",
+      "severity": "medium",
+      "edge": "order->inventory",
+      "message": "No circuit breaker or fallback on changed edge order->inventory.",
+      "evidence": "breaker: False, fallback: False"
+    }
+  ]
+}

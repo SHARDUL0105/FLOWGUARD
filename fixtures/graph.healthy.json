@@ -1,0 +1,24 @@
+{
+  "baseline": {
+    "p95_ms": 468,
+    "error_rate": 0.0
+  },
+  "score": 84,
+  "scenarios": [
+    {
+      "scenario": "db_latency",
+      "p95_ms": 628,
+      "error_rate": 0.004
+    },
+    {
+      "scenario": "service_down",
+      "p95_ms": 369,
+      "error_rate": 0.0
+    },
+    {
+      "scenario": "traffic_spike",
+      "p95_ms": 2018,
+      "error_rate": 0.028
+    }
+  ]
+}

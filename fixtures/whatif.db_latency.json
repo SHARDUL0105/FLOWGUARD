@@ -1,0 +1,176 @@
+[
+  {
+    "scenario": "db_latency",
+    "factor": 1.0,
+    "predicted": {
+      "p95_ms": 467.5,
+      "error_rate": 0.0,
+      "utilization": {
+        "frontend": 0.2,
+        "gateway": 0.25,
+        "order": 0.4,
+        "inventory": 0.4,
+        "payment": 0.5,
+        "database": 0.33
+      },
+      "saturated": [],
+      "risk": "LOW"
+    },
+    "measured": {
+      "p95_ms": 468,
+      "error_rate": 0.0
+    },
+    "accuracy": 0.999,
+    "note": null
+  },
+  {
+    "scenario": "db_latency",
+    "factor": 1.5,
+    "predicted": {
+      "p95_ms": 512.5,
+      "error_rate": 0.0,
+      "utilization": {
+        "frontend": 0.2,
+        "gateway": 0.25,
+        "order": 0.4,
+        "inventory": 0.4,
+        "payment": 0.5,
+        "database": 0.5
+      },
+      "saturated": [],
+      "risk": "LOW"
+    },
+    "measured": {
+      "p95_ms": 513,
+      "error_rate": 0.0
+    },
+    "accuracy": 0.999,
+    "note": null
+  },
+  {
+    "scenario": "db_latency",
+    "factor": 2.0,
+    "predicted": {
+      "p95_ms": 602.5,
+      "error_rate": 0.0,
+      "utilization": {
+        "frontend": 0.2,
+        "gateway": 0.25,
+        "order": 0.4,
+        "inventory": 0.4,
+        "payment": 0.5,
+        "database": 0.67
+      },
+      "saturated": [],
+      "risk": "LOW"
+    },
+    "measured": {
+      "p95_ms": 603,
+      "error_rate": 0.0
+    },
+    "accuracy": 1.0,
+    "note": null
+  },
+  {
+    "scenario": "db_latency",
+    "factor": 2.5,
+    "predicted": {
+      "p95_ms": 872.5000000000001,
+      "error_rate": 0.0,
+      "utilization": {
+        "frontend": 0.2,
+        "gateway": 0.25,
+        "order": 0.4,
+        "inventory": 0.4,
+        "payment": 0.5,
+        "database": 0.83
+      },
+      "saturated": [],
+      "risk": "MEDIUM"
+    },
+    "measured": {
+      "p95_ms": 875,
+      "error_rate": 0.0
+    },
+    "accuracy": 0.997,
+    "note": null
+  },
+  {
+    "scenario": "db_latency",
+    "factor": 3.0,
+    "predicted": {
+      "p95_ms": 173.5,
+      "error_rate": 0.0,
+      "utilization": {
+        "frontend": 0.2,
+        "gateway": 0.25,
+        "order": 0.4,
+        "inventory": 0.4,
+        "payment": 0.5,
+        "database": 1.0
+      },
+      "saturated": [
+        "database"
+      ],
+      "risk": "HIGH"
+    },
+    "measured": {
+      "p95_ms": 628,
+      "error_rate": 0.004
+    },
+    "accuracy": 0.276,
+    "note": "Forecast ignores retry feedback near saturation; risk level HIGH is still correct."
+  },
+  {
+    "scenario": "db_latency",
+    "factor": 3.5,
+    "predicted": {
+      "p95_ms": 173.5,
+      "error_rate": 0.0,
+      "utilization": {
+        "frontend": 0.2,
+        "gateway": 0.25,
+        "order": 0.4,
+        "inventory": 0.4,
+        "payment": 0.5,
+        "database": 1.17
+      },
+      "saturated": [
+        "database"
+      ],
+      "risk": "HIGH"
+    },
+    "measured": {
+      "p95_ms": 321,
+      "error_rate": 0.0
+    },
+    "accuracy": 0.541,
+    "note": "Forecast ignores retry feedback near saturation; risk level HIGH is still correct."
+  },
+  {
+    "scenario": "db_latency",
+    "factor": 4.0,
+    "predicted": {
+      "p95_ms": 173.5,
+      "error_rate": 0.0,
+      "utilization": {
+        "frontend": 0.2,
+        "gateway": 0.25,
+        "order": 0.4,
+        "inventory": 0.4,
+        "payment": 0.5,
+        "database": 1.33
+      },
+      "saturated": [
+        "database"
+      ],
+      "risk": "HIGH"
+    },
+    "measured": {
+      "p95_ms": 328,
+      "error_rate": 0.0
+    },
+    "accuracy": 0.529,
+    "note": "Forecast ignores retry feedback near saturation; risk level HIGH is still correct."
+  }
+]

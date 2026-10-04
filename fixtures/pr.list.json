@@ -1,0 +1,14 @@
+[
+  {
+    "id": 12,
+    "title": "Refactor inventory client",
+    "author": "dev-a",
+    "status": "open"
+  },
+  {
+    "id": 13,
+    "title": "Update README and logging",
+    "author": "dev-b",
+    "status": "open"
+  }
+]
