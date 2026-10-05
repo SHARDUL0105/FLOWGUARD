@@ -35,8 +35,11 @@ export default function IncidentCommander() {
     if (!a || !scenario || asked.current === runId) return;
     asked.current = runId;
     const local = { text: templateBrief(a, c, scenario), source: "template" };
+    setBrief(local); // Display local brief immediately so UI is never stuck
     let live = true;
-    api.brief({ scenario }).then((r) => { if (live) setBrief(r ?? local); });
+    api.brief({ scenario }).then((r) => {
+      if (live && r?.text) setBrief(r);
+    }).catch(() => {});
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [a, scenario, runId]);

@@ -18,9 +18,14 @@ export default function FlowGraph() {
 
   const nodes = useMemo<Node<ServiceNodeData>[]>(
     () =>
-      topology.nodes.map((n) => ({
-        id: n.id, type: "service", position: NODE_POSITIONS[n.id], draggable: false,
-        data: { sid: n.id, label: n.label, layer: n.layer, baseMs: n.base_ms },
+      topology.nodes.map((n, idx) => ({
+        id: n.id,
+        type: "service",
+        position: (n.x !== undefined && n.y !== undefined)
+          ? { x: n.x, y: n.y }
+          : (NODE_POSITIONS[n.id] ?? { x: (idx % 3) * 260, y: Math.floor(idx / 3) * 160 + 100 }),
+        draggable: false,
+        data: { sid: n.id, label: n.label, layer: n.layer ?? 0, baseMs: n.base_ms ?? 50 },
       })),
     [topology],
   );

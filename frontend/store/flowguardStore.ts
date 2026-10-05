@@ -25,6 +25,9 @@ interface FlowState {
   mode: Mode;
   running: boolean;
   runId: number;
+  activeProjectId?: string;
+  setTopology: (topology: Topology) => void;
+  loadProjectTopology: (projectId: string) => Promise<void>;
   ingest: (m: TickMessage) => void;
   startMock: (scenario: ScenarioId, severity?: number) => Promise<void>;
   /** Switch data source. Live falls back to replay if the backend is unreachable. Returns the mode actually used. */
@@ -44,6 +47,49 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   ...initial(),
   mode: "replay",
   runId: 0,
+
+  setTopology: (topo) => {
+    // Generate healthy node metrics seed for all nodes in the topology
+    const nodes: Record<string, NodeMetrics> = {};
+    const history: Record<string, number[]> = {};
+    for (const n of topo.nodes) {
+      nodes[n.id] = { status: "healthy", p95_ms: n.base_ms ?? 50, error_rate: 0, load_rps: n.capacity_rps ? n.capacity_rps * 0.2 : 100, utilization: 0.2 };
+      history[n.id] = [n.base_ms ?? 50, n.base_ms ?? 50, n.base_ms ?? 50];
+    }
+    set({ topology: topo, nodes, history });
+  },
+
+  loadProjectTopology: async (projectId: string) => {
+    set({ activeProjectId: projectId });
+    try {
+      const topo = await api.getTopology(projectId);
+      if (topo && topo.nodes && topo.nodes.length > 0) {
+        const formattedNodes = topo.nodes.map((n: any) => ({
+          id: n.id,
+          label: n.label || n.id,
+          layer: n.layer ?? 0,
+          base_ms: n.base_ms ?? 50,
+          capacity_rps: n.capacity_rps ?? 500,
+          x: n.x,
+          y: n.y,
+          type: n.type,
+        }));
+        const formattedEdges = (topo.edges || []).map((e: any) => ({
+          source: e.source,
+          target: e.target,
+          timeout_ms: e.timeout_ms ?? 700,
+          retries: e.retries ?? 1,
+          breaker: e.breaker ?? true,
+          fallback: e.fallback ?? false,
+        }));
+        get().setTopology({ nodes: formattedNodes, edges: formattedEdges });
+      } else {
+        get().setTopology(TOPOLOGY);
+      }
+    } catch {
+      get().setTopology(TOPOLOGY);
+    }
+  },
 
   ingest: (m) =>
     set((s) => {

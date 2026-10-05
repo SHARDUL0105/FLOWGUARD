@@ -4,7 +4,7 @@ export type NodeStatus = "healthy" | "degraded" | "critical";
 export type ScenarioId = "db_latency" | "service_down" | "traffic_spike";
 export type Mode = "live" | "replay";
 
-export interface TopologyNode { id: string; label: string; layer: number; base_ms: number; capacity_rps: number }
+export interface TopologyNode { id: string; label: string; layer: number; base_ms: number; capacity_rps: number; x?: number; y?: number; type?: string }
 export interface TopologyEdge {
   source: string; target: string; timeout_ms: number | null; retries: number; breaker: boolean; fallback: boolean;
 }

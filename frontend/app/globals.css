@@ -20,11 +20,45 @@ body { background: transparent; color: rgb(var(--ink)); font-family: var(--font-
 .num { font-family: var(--font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 ::selection { background: rgb(var(--mint)); color: rgb(var(--forest)); }
 
-/* React Flow: transparent canvas, quiet attribution */
+/* React Flow: transparent canvas, quiet attribution & controls */
 .react-flow { background: transparent !important; }
 .react-flow__attribution { background: transparent !important; opacity: .4; font-size: 9px; }
 .react-flow__attribution a { color: rgb(var(--mute)) !important; }
 .react-flow__pane, .react-flow__node { cursor: default; }
+
+.react-flow__controls {
+  background: rgb(var(--paper)) !important;
+  border: 1px solid rgb(var(--rule)) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: rgb(var(--paper)) !important;
+  border-bottom: 1px solid rgb(var(--rule)) !important;
+  color: rgb(var(--ink)) !important;
+  fill: rgb(var(--ink)) !important;
+}
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+.react-flow__controls-button:hover {
+  background: rgb(var(--mint) / 0.5) !important;
+  color: rgb(var(--forest)) !important;
+  fill: rgb(var(--forest)) !important;
+}
+.react-flow__controls-button svg {
+  fill: currentColor !important;
+}
+.react-flow__controls-button svg path {
+  fill: currentColor !important;
+}
+
+.react-flow__minimap {
+  background: rgb(var(--paper)) !important;
+  border: 1px solid rgb(var(--rule)) !important;
+  border-radius: 12px !important;
+}
 
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--faint)) transparent; }
 :focus-visible { outline: 1.5px solid rgb(var(--forest)); outline-offset: 3px; }
