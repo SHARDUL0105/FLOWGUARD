@@ -61,3 +61,15 @@ class ProjectCreate(BaseModel):
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None; environment: Optional[str] = None; source: Optional[str] = None; score: Optional[int] = None; services: Optional[int] = None; alerts: Optional[int] = None; last_sim: Optional[str] = None; trend: Optional[List[int]] = None; sims: Optional[List[SimRecord]] = None
+
+class TopologyNodeSave(BaseModel):
+    id: str; label: str; layer: int = 0; base_ms: float = 100; capacity_rps: float = 500
+    type: Optional[str] = "service"  # service | database | cache | queue | gateway | external
+    x: float = 0; y: float = 0      # canvas position stored alongside
+
+class TopologyEdgeSave(BaseModel):
+    id: str; source: str; target: str
+    timeout_ms: Optional[float] = 700; retries: int = 1; breaker: bool = True; fallback: bool = False
+
+class TopologySave(BaseModel):
+    nodes: List[TopologyNodeSave]; edges: List[TopologyEdgeSave]

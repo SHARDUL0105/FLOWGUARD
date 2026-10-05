@@ -52,7 +52,11 @@ export default function ProjectOverview() {
             <h1 className="text-[clamp(40px,6vw,84px)] font-light leading-none tracking-tight">{p.name}</h1>
             <p className="mt-3 text-[13px] text-mute">{p.env}, {p.source}</p>
           </div>
-          <div className="flex gap-3"><Button href="/command-center">Open Command Center</Button><Button href="/simulations" variant="outline">Run Simulation</Button></div>
+          <div className="flex flex-wrap gap-3">
+            <Button href="/command-center">Open Command Center</Button>
+            <Button href="/simulations" variant="outline">Run Simulation</Button>
+            <Button href={`/projects/${project}/topology`} variant="outline">Edit Topology</Button>
+          </div>
         </div>
 
         <div className="mt-14 grid gap-4 md:grid-cols-4">
@@ -65,7 +69,12 @@ export default function ProjectOverview() {
         </div>
 
         <section className="mt-16">
-          <h2 className="text-[13px] font-semibold">Dependency graph</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-[13px] font-semibold">Dependency graph</h2>
+            <Link href={`/projects/${project}/topology`} className="text-[12px] text-forest underline underline-offset-4">
+              Edit topology →
+            </Link>
+          </div>
           <div className="mt-4 border-y border-rule py-8"><MiniGraph statuses={p.alerts ? { database: "degraded" } : {}} /></div>
         </section>
 

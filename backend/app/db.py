@@ -245,7 +245,7 @@ def create_project(tenant_id: str, data: dict[str, Any]) -> dict[str, Any]:
 def update_project(tenant_id: str, project_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
     """Partial update of a project. Returns the updated doc or None if not found."""
     global _last_error
-    allowed = {"name", "environment", "source", "score", "services", "alerts", "last_sim", "trend", "sims"}
+    allowed = {"name", "environment", "source", "score", "services", "alerts", "last_sim", "trend", "sims", "topology"}
     patch = {k: v for k, v in updates.items() if k in allowed}
     if not patch:
         return get_project(tenant_id, project_id)

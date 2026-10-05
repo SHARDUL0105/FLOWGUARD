@@ -95,4 +95,10 @@ export const api = {
   async deleteProject(id: string): Promise<{ ok: boolean }> {
     return await req(`/api/projects/${id}`, { method: "DELETE" });
   },
+  async getTopology(projectId: string): Promise<Record<string, any> | null> {
+    try { return await req(`/api/projects/${projectId}/topology`); } catch { return null; }
+  },
+  async saveTopology(projectId: string, topology: { nodes: any[]; edges: any[] }): Promise<{ ok: boolean }> {
+    return await req(`/api/projects/${projectId}/topology`, { method: "PUT", body: JSON.stringify(topology) });
+  },
 };

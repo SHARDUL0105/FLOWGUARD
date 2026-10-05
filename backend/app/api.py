@@ -160,6 +160,27 @@ def delete_project_api(project_id: str, tenant_id: str = Depends(current_tenant)
         raise HTTPException(404, "Project not found")
     return {"ok": True}
 
+@router.get('/projects/{project_id}/topology')
+def get_topology(project_id: str, tenant_id: str = Depends(current_tenant)):
+    """Return the custom topology stored for a project, or None if not yet set."""
+    p = db.get_project(tenant_id, project_id)
+    if not p:
+        raise HTTPException(404, "Project not found")
+    return p.get("topology") or None
+
+@router.put('/projects/{project_id}/topology')
+def save_topology(project_id: str, body: dict, tenant_id: str = Depends(current_tenant)):
+    """Persist a custom topology for a project. Overwrites the previous one."""
+    from .schemas import TopologySave
+    try:
+        TopologySave(**body)   # validate shape
+    except Exception as e:
+        raise HTTPException(400, f"Invalid topology: {e}")
+    p = db.update_project(tenant_id, project_id, {"topology": body, "services": len(body.get("nodes", []))})
+    if not p:
+        raise HTTPException(404, "Project not found")
+    return {"ok": True, "nodes": len(body.get("nodes", [])), "edges": len(body.get("edges", []))}
+
 @router.websocket("/ws")
 async def websocket(ws: WebSocket):
     await ws.accept()
