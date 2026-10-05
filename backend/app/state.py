@@ -7,8 +7,8 @@ from collections import deque
 from .sim.config import DEFAULT_SEVERITY, FAULT_AT, SEED
 from .sim.engine import Simulator
 from .sim.topology import ORDER
-from .intel.anomaly import status, update_tracking
-from .intel.root_cause import rank
+from .intel.runtime.anomaly import status, update_tracking
+from .intel.runtime.root_cause import rank
 
 
 class AppState:

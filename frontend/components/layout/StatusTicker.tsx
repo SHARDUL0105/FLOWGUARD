@@ -7,7 +7,7 @@ export default function StatusTicker() {
   const events = useFlowStore((s) => s.events);
   const nodes = useFlowStore((s) => s.nodes);
   return (
-    <div className="flex h-10 items-center gap-5 overflow-hidden border-t border-rule px-6 text-[12px]">
+    <div className="glass flex h-10 items-center gap-5 overflow-hidden rounded-none border-x-0 border-b-0 px-6 text-[12px]">
       <span className="shrink-0 text-mute">Event log</span>
       {events.length === 0 ? (
         <span className="text-mute/80">Nothing abnormal. Start a fault to watch it spread.</span>

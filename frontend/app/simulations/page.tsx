@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContaine
 import NumberTicker from "@/components/effects/NumberTicker";
 import SiteNav from "@/components/layout/SiteNav";
 import { WHATIF } from "@/lib/fixtures";
+import { C, TOOLTIP_STYLE } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 const SCEN = { db_latency: { label: "Database latency", unit: "Database slows down by" }, traffic_spike: { label: "Traffic", unit: "Checkout traffic rises by" } } as const;
@@ -18,7 +19,7 @@ export default function SimulationsPage() {
   const data = rows.map((x) => ({ factor: `${x.factor}x`, Forecast: x.predicted.p95_ms, Measured: x.measured.p95_ms }));
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-screen">
       <SiteNav />
       <main className="mx-auto max-w-[1200px] px-6 pb-24 pt-14 md:px-10">
         <h1 className="text-[clamp(44px,7vw,96px)] font-light leading-none tracking-tight">What if</h1>
@@ -42,7 +43,7 @@ export default function SimulationsPage() {
           </div>
 
           <div>
-            <dl className="grid grid-cols-2 gap-px border border-rule bg-rule md:grid-cols-5">
+            <dl className="grid grid-cols-2 gap-3 md:grid-cols-5">
               {[
                 ["Predicted", <><NumberTicker value={r.predicted.p95_ms} /><span className="text-[11px] text-mute"> ms</span></>],
                 ["Measured", <><NumberTicker value={r.measured.p95_ms} /><span className="text-[11px] text-mute"> ms</span></>],
@@ -50,7 +51,7 @@ export default function SimulationsPage() {
                 ["Risk", <span style={{ color: RISK_COLOR[r.predicted.risk] }} className="text-[22px] font-medium">{r.predicted.risk}</span>],
                 ["Resilience", <NumberTicker value={r.resilience} />],
               ].map(([k, v]) => (
-                <div key={k as string} className="bg-paper p-4"><dt className="text-[11.5px] text-mute">{k}</dt><dd className="num mt-1 text-[28px] font-light leading-none">{v}</dd></div>
+                <div key={k as string} className="glass rounded-xl p-4"><dt className="text-[11.5px] text-mute">{k}</dt><dd className="num mt-1 text-[28px] font-light leading-none">{v}</dd></div>
               ))}
             </dl>
             <div className="mt-4 flex items-baseline justify-between text-[13px]">
@@ -61,14 +62,14 @@ export default function SimulationsPage() {
             <div className="mt-8 h-[300px]">
               <ResponsiveContainer>
                 <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={2}>
-                  <CartesianGrid stroke="#E6E8E3" vertical={false} />
-                  <XAxis dataKey="factor" stroke="#6E756F" tickLine={false} fontSize={11} />
-                  <YAxis stroke="#6E756F" tickLine={false} axisLine={false} fontSize={11} width={44} unit=" ms" />
-                  <Tooltip cursor={{ fill: "#F3F3ED" }} contentStyle={{ background: "#FAFAF7", border: "1px solid #E6E8E3", borderRadius: 0, fontSize: 12 }} />
+                  <CartesianGrid stroke={C.rule} vertical={false} />
+                  <XAxis dataKey="factor" stroke={C.mute} tickLine={false} fontSize={11} />
+                  <YAxis stroke={C.mute} tickLine={false} axisLine={false} fontSize={11} width={44} unit=" ms" />
+                  <Tooltip cursor={{ fill: C.ivory }} contentStyle={TOOLTIP_STYLE} />
                   <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
-                  <ReferenceLine x={`${factor}x`} stroke="#101412" strokeDasharray="2 3" />
-                  <Bar dataKey="Forecast" fill="#C9CEC6" isAnimationActive animationDuration={900} />
-                  <Bar dataKey="Measured" fill="#0B4F3A" isAnimationActive animationDuration={900} />
+                  <ReferenceLine x={`${factor}x`} stroke={C.ink} strokeDasharray="2 3" />
+                  <Bar dataKey="Forecast" fill={C.faint} isAnimationActive animationDuration={900} />
+                  <Bar dataKey="Measured" fill={C.forest} isAnimationActive animationDuration={900} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

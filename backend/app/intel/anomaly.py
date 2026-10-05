@@ -1,62 +1,74 @@
-from __future__ import annotations
+"""Node status and deterministic first-anomaly/recovery tracking."""
 
-from typing import Dict
-from ..sim.topology import ORDER, SERVICES
+from collections.abc import Iterable, Mapping
+from typing import Literal, TypedDict
+
+NodeStatus = Literal["healthy", "degraded", "critical"]
 
 
-def status(resp: float, resp0: float, succ: float) -> str:
-    ratio = resp / max(resp0, 1e-9)
+class AnomalyTrackingResult(TypedDict):
+    t_first: dict[str, int]
+    recovered_at: dict[str, list[int]]
 
-    if succ < 0.8 or ratio >= 3:
+
+def node_status(resp: float, resp0: float, succ: float) -> NodeStatus:
+    """Return the status for a node using its caller-provided healthy response time."""
+    if resp0 <= 0:
+        raise ValueError("resp0 must be greater than zero")
+
+    response_ratio = resp / resp0
+    if succ < 0.8 or response_ratio >= 3:
         return "critical"
-
-    if succ < 0.98 or ratio >= 1.5:
+    if succ < 0.98 or response_ratio >= 1.5:
         return "degraded"
-
     return "healthy"
 
 
-def update_tracking(
-    previous: Dict[str, str],
-    current: Dict[str, str],
-    t: int,
-    first: Dict[str, int],
-    recovered_streak: Dict[str, int],
-):
-    events = []
+def track_anomalies(
+    ticks: Iterable[tuple[int, Mapping[str, NodeStatus]]],
+) -> AnomalyTrackingResult:
+    """Track first anomaly ticks and recoveries from per-tick node statuses.
 
-    for node in ORDER:
-        old = previous.get(node, "healthy")
-        new = current[node]
+    Each input item is a tick number and a mapping of observed node IDs to statuses.
+    A recovery is recorded on the fifth consecutive observed healthy tick after an
+    anomaly. Missing observations, tick gaps, and anomalous statuses reset the
+    pending recovery streak. ``t_first`` is retained if a node becomes anomalous
+    again after recovering.
+    """
+    t_first: dict[str, int] = {}
+    recovered_at: dict[str, list[int]] = {}
+    healthy_streak: dict[str, int] = {}
+    awaiting_recovery: set[str] = set()
+    previous_tick: int | None = None
 
-        # Healthy -> anomaly
-        if old == "healthy" and new != "healthy" and node not in first:
-            first[node] = t
+    for tick, statuses in ticks:
+        if previous_tick is not None:
+            if tick <= previous_tick:
+                raise ValueError("tick numbers must be strictly increasing")
+            if tick != previous_tick + 1:
+                healthy_streak.clear()
 
-            events.append({
-                "t": t,
-                "node": node,
-                "kind": "anomaly_start",
-                "msg": (
-                    f"{SERVICES[node]['label']} "
-                    f"{'failing requests' if new == 'critical' else 'latency rising'}"
-                ),
-            })
+        for node, status in statuses.items():
+            if status not in ("healthy", "degraded", "critical"):
+                raise ValueError(f"invalid status for node {node!r}: {status!r}")
 
-        # Recovery tracking
-        if new == "healthy":
-            recovered_streak[node] = recovered_streak.get(node, 0) + 1
+            if status != "healthy":
+                t_first.setdefault(node, tick)
+                awaiting_recovery.add(node)
+                healthy_streak[node] = 0
+            elif node in awaiting_recovery:
+                streak = healthy_streak.get(node, 0) + 1
+                if streak == 5:
+                    recovered_at.setdefault(node, []).append(tick)
+                    awaiting_recovery.remove(node)
+                    healthy_streak.pop(node, None)
+                else:
+                    healthy_streak[node] = streak
 
-            if old != "healthy" and recovered_streak[node] >= 5:
-                events.append({
-                    "t": t,
-                    "node": node,
-                    "kind": "recovered",
-                    "msg": f"{SERVICES[node]['label']} recovered",
-                })
-                recovered_streak[node] = 0
+        observed_nodes = statuses.keys()
+        for node in awaiting_recovery - observed_nodes:
+            healthy_streak[node] = 0
 
-        else:
-            recovered_streak[node] = 0
+        previous_tick = tick
 
-    return events
+    return {"t_first": t_first, "recovered_at": recovered_at}

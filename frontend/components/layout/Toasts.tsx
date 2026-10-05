@@ -39,7 +39,7 @@ export default function Toasts() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-auto flex gap-3 border border-rule bg-paper/95 p-3 shadow-[0_8px_30px_rgba(16,20,18,0.08)] backdrop-blur"
+            className="pointer-events-auto flex gap-3 glass-strong rounded-xl p-3"
           >
             <span className="mt-1 h-8 w-[3px] shrink-0" style={{ background: STATUS_COLOR[t.status] }} />
             <div className="text-[12.5px] leading-snug">

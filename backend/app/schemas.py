@@ -49,3 +49,15 @@ class AnalyzeResponse(BaseModel):
     id: int; score_base: int; score_pr: int; verdict: str; per_scenario: list[dict]; findings: List[Finding]; cascade_path: List[str]; diff: str; comment: str
 class HealResponse(BaseModel):
     id: int; gate: Literal["accepted","rejected"]; reason: Optional[str]; score_before: int; score_after: int; patch_diff: str; per_scenario_after: list[dict]; verified_under: List[ScenarioId]
+
+class SimRecord(BaseModel):
+    name: str; when: str; result: str
+
+class ProjectOut(BaseModel):
+    project_id: str; name: str; environment: str; source: str; score: int; services: int; alerts: int; last_sim: str; trend: List[int]; sims: List[SimRecord]; tenant_id: str; created_at: Optional[str] = None; updated_at: Optional[str] = None
+
+class ProjectCreate(BaseModel):
+    project_id: str; name: str; environment: Optional[str] = "Production-like"; source: Optional[str] = "Manual"; score: Optional[int] = 84; services: Optional[int] = 6; alerts: Optional[int] = 0; last_sim: Optional[str] = "No simulation yet"; trend: Optional[List[int]] = None; sims: Optional[List[SimRecord]] = None
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None; environment: Optional[str] = None; source: Optional[str] = None; score: Optional[int] = None; services: Optional[int] = None; alerts: Optional[int] = None; last_sim: Optional[str] = None; trend: Optional[List[int]] = None; sims: Optional[List[SimRecord]] = None

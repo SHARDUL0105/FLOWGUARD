@@ -1,8 +1,9 @@
 "use client";
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { STATUS_COLOR, STATUS_ON_GREEN, worst } from "@/lib/colors";
 import { NODE_POSITIONS, SERVICE_LABEL, TOPOLOGY } from "@/lib/mock";
 import type { NodeStatus } from "@/lib/types";
+import { C } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   tone?: "light" | "green";
   labels?: boolean;
   particles?: boolean;
+  /** hold all motion (used while the hero scene is hidden) */
+  paused?: boolean;
   className?: string;
 }
 
@@ -21,15 +24,29 @@ const curve = (a: { x: number; y: number }, b: { x: number; y: number }) => {
 };
 
 /** Quiet line-drawing of the service ecosystem. Used in the hero, cards and overview pages. */
-function MiniGraphInner({ statuses = {}, values = {}, tone = "light", labels = true, particles = true, className }: Props) {
+function MiniGraphInner({ statuses = {}, values = {}, tone = "light", labels = true, particles = true, paused = false, className }: Props) {
+  const ref = useRef<SVGSVGElement>(null);
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { rootMargin: "120px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el?.pauseAnimations) return;
+    if (paused || !visible) el.pauseAnimations(); else el.unpauseAnimations();
+  }, [paused, visible, statuses]);
   const green = tone === "green";
-  const ink = green ? "#FAFAF7" : "#101412";
-  const fill = green ? "#0B4F3A" : "#FAFAF7";
+  const ink = green ? C.snow : C.ink;
+  const fill = green ? C.deep : C.paper;
   const colors = green ? STATUS_ON_GREEN : STATUS_COLOR;
   const st = (id: string): NodeStatus => statuses[id] ?? "healthy";
 
   return (
-    <svg viewBox="-80 10 1260 400" className={cn("h-auto w-full", className)} role="img" aria-label="Service dependency graph">
+    <svg ref={ref} viewBox="-80 10 1260 400" className={cn("h-auto w-full", className)} role="img" aria-label="Service dependency graph">
       {TOPOLOGY.edges.map((e) => {
         const a = NODE_POSITIONS[e.source], b = NODE_POSITIONS[e.target];
         const d = curve(a, b);

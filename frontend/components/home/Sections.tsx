@@ -7,7 +7,7 @@ import NumberTicker from "@/components/effects/NumberTicker";
 import MiniGraph from "@/components/graph/MiniGraph";
 import ChaosButtons from "@/components/sim/ChaosButtons";
 import { Button } from "@/components/ui/button";
-import { CASCADE_STEPS, STEP_VALUES, statusesForStep } from "@/lib/cascade";
+import { C, TOOLTIP_STYLE } from "@/lib/theme";
 import { RUNS, WHATIF } from "@/lib/fixtures";
 import { SERVICE_LABEL } from "@/lib/mock";
 import { useFlowStore } from "@/store/flowguardStore";
@@ -21,22 +21,15 @@ function DrawRule({ className = "" }: { className?: string }) {
 
 /* ---------- Problem ---------- */
 export function ProblemSection() {
-  const [step, setStep] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setStep((s) => (s + 1) % (CASCADE_STEPS + 2)), 1500);
-    return () => clearInterval(id);
-  }, []);
-  const s = Math.min(step, CASCADE_STEPS - 1);
   return (
-    <section className="bg-forest px-6 py-28 text-paper md:px-14">
+    <section data-nav-tone="dark" className="bg-deep px-6 py-28 text-snow md:px-14">
       <div className="mx-auto max-w-[1200px]">
         <h2 className="max-w-[900px] text-[clamp(36px,6.5vw,96px)] font-light leading-[0.98] tracking-tight">
           Systems rarely fail all at once.
           <br />
           <span className="font-extrabold">Failures propagate.</span>
         </h2>
-        <div className="mt-16"><MiniGraph tone="green" statuses={statusesForStep(s)} values={STEP_VALUES[s]} /></div>
-        <p className="mt-6 max-w-[520px] text-[14px] leading-relaxed text-paper/70">
+        <p className="mt-10 max-w-[560px] text-[15px] leading-relaxed text-snow/75">
           A slow database makes inventory and payment time out, which slows orders, which makes the gateway fail. Monitoring shows the red at the end. It does not show where it started.
         </p>
       </div>
@@ -54,12 +47,12 @@ const CHAPTERS = [
 ];
 export function HowItWorks() {
   return (
-    <section id="platform" className="bg-paper px-6 py-32 md:px-14">
+    <section id="platform" className="px-6 py-32 md:px-14">
       <div className="mx-auto max-w-[1200px]">
         <h2 className="max-w-[640px] text-[clamp(28px,3.6vw,52px)] font-light leading-[1.05] tracking-tight">From first symptom to verified fix, in five chapters.</h2>
         <div className="mt-20 grid gap-x-8 gap-y-14 md:grid-cols-5">
           {CHAPTERS.map(([t, d], i) => (
-            <div key={t} className="group">
+            <div key={t} className="glass glass-hover group rounded-2xl p-5">
               <DrawRule className="text-ink/25 transition-colors group-hover:text-forest" />
               <div className="num mt-4 text-[11px] text-mute">Chapter {i + 1}</div>
               <h3 className="mt-6 text-[26px] font-semibold tracking-tight">{t}</h3>
@@ -80,13 +73,13 @@ export function SystemSection() {
   const values = useMemo(() => Object.fromEntries(Object.entries(nodes).map(([k, v]) => [k, `${v.p95_ms} ms`])), [nodes]);
   const top = analysis?.root_cause[0];
   return (
-    <section className="bg-ivory px-6 py-28 md:px-14">
+    <section className="bg-ivory/40 px-6 py-28 md:px-14">
       <div className="mx-auto max-w-[1200px]">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <h2 className="max-w-[620px] text-[clamp(28px,3.6vw,52px)] font-light leading-[1.05] tracking-tight">Break it yourself. Watch it spread one hop at a time.</h2>
           <ChaosButtons />
         </div>
-        <div className="mt-14 border-y border-rule py-10"><MiniGraph statuses={statuses} values={values} /></div>
+        <div className="glass mt-14 rounded-2xl px-4 py-10"><MiniGraph statuses={statuses} values={values} /></div>
         <div className="mt-5 flex min-h-[24px] flex-wrap items-center justify-between gap-3 text-[13px]">
           <span className="text-mute">{top ? <>Likely origin: <span className="font-semibold text-ink">{SERVICE_LABEL[top.node]}</span> (confidence estimate {Math.round(top.confidence * 100)}%)</> : "Everything is steady. Pick a fault above."}</span>
           <Link href="/command-center" className="text-forest underline underline-offset-4">Open the full command center</Link>
@@ -103,7 +96,7 @@ export function PredictionSection() {
   const data = rows.map((r) => ({ factor: r.factor, Forecast: r.predicted.p95_ms, Measured: r.measured.p95_ms }));
   const hi = rows.find((r) => r.factor === 3.0)!;
   return (
-    <section className="bg-paper px-6 py-32 md:px-14">
+    <section className="px-6 py-32 md:px-14">
       <div className="mx-auto grid max-w-[1200px] gap-16 md:grid-cols-[4fr_7fr]">
         <div>
           <h2 className="text-[clamp(28px,3.6vw,52px)] font-light leading-[1.05] tracking-tight">A forecast that admits where it breaks.</h2>
@@ -119,14 +112,14 @@ export function PredictionSection() {
         <div className="h-[340px] w-full">
           <ResponsiveContainer>
             <LineChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke="#E6E8E3" vertical={false} />
-              <XAxis dataKey="factor" tickFormatter={(v) => `${v}x`} stroke="#6E756F" tickLine={false} fontSize={11} />
-              <YAxis stroke="#6E756F" tickLine={false} axisLine={false} fontSize={11} width={44} unit=" ms" />
-              <Tooltip contentStyle={{ background: "#FAFAF7", border: "1px solid #E6E8E3", borderRadius: 0, fontSize: 12 }} />
+              <CartesianGrid stroke={C.rule} vertical={false} />
+              <XAxis dataKey="factor" tickFormatter={(v) => `${v}x`} stroke={C.mute} tickLine={false} fontSize={11} />
+              <YAxis stroke={C.mute} tickLine={false} axisLine={false} fontSize={11} width={44} unit=" ms" />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
               <ReferenceLine x={3} stroke="#D94B45" strokeDasharray="2 4" />
-              <Line type="monotone" dataKey="Forecast" stroke="#101412" strokeDasharray="5 4" strokeWidth={1.4} dot={false} isAnimationActive animationDuration={1400} />
-              <Line type="monotone" dataKey="Measured" stroke="#0B4F3A" strokeWidth={2} dot={{ r: 2.5, fill: "#0B4F3A" }} isAnimationActive animationDuration={1400} />
+              <Line type="monotone" dataKey="Forecast" stroke={C.ink} strokeDasharray="5 4" strokeWidth={1.4} dot={false} isAnimationActive animationDuration={1400} />
+              <Line type="monotone" dataKey="Measured" stroke={C.forest} strokeWidth={2} dot={{ r: 2.5, fill: C.forest }} isAnimationActive animationDuration={1400} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -139,7 +132,7 @@ export function PredictionSection() {
 export function ProjectsSection() {
   const projects = useProjectsStore((s) => s.projects);
   return (
-    <section className="bg-ivory px-6 py-28 md:px-14">
+    <section className="bg-ivory/40 px-6 py-28 md:px-14">
       <div className="mx-auto max-w-[1200px]">
         <div className="flex items-end justify-between gap-6">
           <h2 className="max-w-[560px] text-[clamp(28px,3.6vw,52px)] font-light leading-[1.05] tracking-tight">Every system you run, in one quiet list.</h2>
@@ -147,7 +140,7 @@ export function ProjectsSection() {
         </div>
         <div className="mt-14">
           {projects.slice(0, 3).map((p) => (
-            <Link key={p.slug} href={`/projects/${p.slug}`} className="group grid grid-cols-[1fr_auto] items-center gap-6 border-t border-rule py-7 transition-colors hover:bg-paper md:grid-cols-[3fr_1fr_1fr_1fr_2fr]">
+            <Link key={p.slug} href={`/projects/${p.slug}`} className="group grid grid-cols-[1fr_auto] glass-hover items-center gap-6 rounded-xl border-t border-ink/10 px-4 py-7 md:grid-cols-[3fr_1fr_1fr_1fr_2fr]">
               <div><div className="text-[22px] font-semibold tracking-tight">{p.name}</div><div className="mt-0.5 text-[12px] text-mute">{p.env}</div></div>
               <div className="num text-[34px] font-light">{p.score}<span className="ml-1 text-[11px] text-mute">score</span></div>
               <div className="hidden text-[13px] text-mute md:block"><span className="num text-ink">{p.services}</span> services</div>
@@ -184,24 +177,24 @@ export function AutoFix() {
     return () => clearInterval(id);
   }, [inView, run]);
   return (
-    <section ref={ref} className="bg-forest px-6 py-32 text-paper md:px-14">
+    <section ref={ref} data-nav-tone="dark" className="bg-deep px-6 py-32 text-snow md:px-14">
       <div className="mx-auto grid max-w-[1200px] gap-16 md:grid-cols-[5fr_6fr]">
         <div>
           <h2 className="text-[clamp(28px,3.6vw,52px)] font-light leading-[1.05] tracking-tight">Fixes that prove themselves before they merge.</h2>
           <ol className="mt-12">
             {STORY.map(([t, d], i) => (
-              <li key={t} className={`border-t border-paper/20 py-4 transition-opacity duration-700 ${i <= step ? "opacity-100" : "opacity-30"}`}>
-                <div className="flex items-baseline justify-between"><span className="text-[17px] font-semibold">{t}</span><span className="num text-[11px] text-paper/50">{i + 1}/5</span></div>
-                {i === step && <p className="mt-1 text-[13px] leading-relaxed text-paper/70">{d}</p>}
+              <li key={t} className={`border-t border-snow/20 py-4 transition-opacity duration-700 ${i <= step ? "opacity-100" : "opacity-30"}`}>
+                <div className="flex items-baseline justify-between"><span className="text-[17px] font-semibold">{t}</span><span className="num text-[11px] text-snow/50">{i + 1}/5</span></div>
+                {i === step && <p className="mt-1 text-[13px] leading-relaxed text-snow/70">{d}</p>}
               </li>
             ))}
           </ol>
-          <button onClick={() => setRun((r) => r + 1)} className="mt-6 text-[12.5px] text-paper/70 underline underline-offset-4 hover:text-paper">Replay</button>
+          <button onClick={() => setRun((r) => r + 1)} className="mt-6 text-[12.5px] text-snow/70 underline underline-offset-4 hover:text-snow">Replay</button>
         </div>
-        <div className="flex flex-col justify-between border border-paper/20 p-8">
+        <div className="flex flex-col justify-between border border-snow/20 p-8">
           <div className="flex items-end gap-4">
             <NumberTicker value={step >= 4 ? RUNS.healed.score : RUNS.pr12.score} className="text-[clamp(80px,12vw,160px)] font-extralight leading-none" />
-            <div className="mb-3 text-[12px] text-paper/60">resilience score<br />was {RUNS.base.score} before the PR</div>
+            <div className="mb-3 text-[12px] text-snow/60">resilience score<br />was {RUNS.base.score} before the PR</div>
           </div>
           <div className="mt-8 min-h-[190px] text-[12.5px]">
             {step === 2 && (
@@ -210,13 +203,13 @@ export function AutoFix() {
             {step >= 3 && (
               <ul className="space-y-2">
                 {["Database latency", "Service down", "Traffic spike"].map((n, i) => (
-                  <motion.li key={n} initial={{ opacity: 0 }} animate={{ opacity: step === 3 && i > 0 ? 0.5 : 1 }} className="flex justify-between border-b border-paper/15 pb-2">
+                  <motion.li key={n} initial={{ opacity: 0 }} animate={{ opacity: step === 3 && i > 0 ? 0.5 : 1 }} className="flex justify-between border-b border-snow/15 pb-2">
                     <span>{n}</span><span className="text-[#9FE0C4]">{step >= 4 ? "Verified" : "Running"}</span>
                   </motion.li>
                 ))}
               </ul>
             )}
-            {step < 2 && <p className="text-paper/50">{step === 0 ? "Regression found in the pull request." : "order → inventory has no timeout."}</p>}
+            {step < 2 && <p className="text-snow/50">{step === 0 ? "Regression found in the pull request." : "order → inventory has no timeout."}</p>}
           </div>
         </div>
       </div>
@@ -227,7 +220,7 @@ export function AutoFix() {
 /* ---------- Final CTA ---------- */
 export function FinalCTA() {
   return (
-    <section className="bg-paper px-6 pb-14 pt-36 md:px-14">
+    <section className="px-6 pb-14 pt-36 md:px-14">
       <div className="mx-auto max-w-[1200px]">
         <h2 className="max-w-[1000px] text-[clamp(40px,8vw,120px)] font-light leading-[0.95] tracking-tight">Your systems don&apos;t have to fail first.</h2>
         <div className="mt-12 flex flex-wrap items-center gap-4"><Button href="/projects/connect">Connect a Project</Button><Button href="/command-center" variant="outline">Enter Command Center</Button></div>

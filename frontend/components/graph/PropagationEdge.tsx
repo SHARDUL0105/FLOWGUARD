@@ -2,6 +2,7 @@
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@xyflow/react";
 import type { Edge, EdgeProps } from "@xyflow/react";
 import { memo, useState } from "react";
+import { C } from "@/lib/theme";
 import { STATUS_COLOR, worst } from "@/lib/colors";
 import { useFlowStore } from "@/store/flowguardStore";
 
@@ -25,7 +26,7 @@ function PropagationEdgeInner({ id, source, target, sourceX, sourceY, targetX, t
 
   return (
     <>
-      <BaseEdge id={id} path={path} style={{ stroke: status === "healthy" ? "#101412" : color, strokeOpacity: status === "healthy" ? 0.2 : 0.55, strokeWidth: 1.2 }} />
+      <BaseEdge id={id} path={path} style={{ stroke: status === "healthy" ? C.ink : color, strokeOpacity: status === "healthy" ? 0.2 : 0.55, strokeWidth: 1.2 }} />
       {/* particles: key on status so the animation restarts at the new speed */}
       <g key={`${id}-${status}`} pointerEvents="none">
         {Array.from({ length: f.n }).map((_, i) => (

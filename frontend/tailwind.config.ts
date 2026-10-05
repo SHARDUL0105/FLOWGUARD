@@ -1,17 +1,21 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        paper: "#FAFAF7",
-        ivory: "#F3F3ED",
-        ink: "#101412",
-        forest: { DEFAULT: "#0B4F3A", 2: "#145F49" },
-        mint: "#DCEFE7",
-        mute: "#6E756F",
-        rule: "#E6E8E3",
+        paper: "rgb(var(--paper) / <alpha-value>)",
+        ivory: "rgb(var(--ivory) / <alpha-value>)",
+        ink: "rgb(var(--ink) / <alpha-value>)",
+        forest: { DEFAULT: "rgb(var(--forest) / <alpha-value>)", 2: "rgb(var(--forest-2) / <alpha-value>)" },
+        deep: "rgb(var(--deep) / <alpha-value>)",
+        snow: "rgb(var(--snow) / <alpha-value>)",
+        surface: "rgb(var(--surface) / <alpha-value>)",
+        mint: "rgb(var(--mint) / <alpha-value>)",
+        mute: "rgb(var(--mute) / <alpha-value>)",
+        rule: "rgb(var(--rule) / <alpha-value>)",
         ok: "#218B6A",
         warn: "#C9851F",
         crit: "#D94B45",

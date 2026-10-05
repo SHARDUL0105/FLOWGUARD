@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import MiniGraph from "@/components/graph/MiniGraph";
@@ -9,14 +10,32 @@ import { useProjectsStore } from "@/store/projectsStore";
 
 export default function ProjectOverview() {
   const { project } = useParams<{ project: string }>();
-  const p = useProjectsStore((s) => s.projects.find((x) => x.slug === project));
+  const { projects, loading, fetchProjects } = useProjectsStore();
+  const p = projects.find((x) => x.slug === project);
+
+  useEffect(() => {
+    fetchProjects();
+    
+    // Also re-fetch when tenant changes
+    const handleTenantChange = () => fetchProjects();
+    window.addEventListener("fg-tenant-change", handleTenantChange);
+    return () => window.removeEventListener("fg-tenant-change", handleTenantChange);
+  }, []);
+
+  if (loading && !p) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-forest border-t-transparent" />
+      </div>
+    );
+  }
 
   if (!p) {
     return (
-      <div className="min-h-screen bg-paper"><SiteNav />
+      <div className="min-h-screen"><SiteNav />
         <main className="mx-auto max-w-[1200px] px-6 py-24 md:px-10">
           <h1 className="text-[40px] font-light tracking-tight">Project not found</h1>
-          <p className="mt-3 max-w-[460px] text-[14px] text-mute">Projects live in memory in this prototype, so a page refresh clears any you connected.</p>
+          <p className="mt-3 max-w-[460px] text-[14px] text-mute">The project you're looking for doesn't exist in the current organization.</p>
           <Button href="/projects" className="mt-8">Back to projects</Button>
         </main>
       </div>
@@ -24,7 +43,7 @@ export default function ProjectOverview() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-screen">
       <SiteNav />
       <main className="mx-auto max-w-[1200px] px-6 pb-24 pt-12 md:px-10">
         <Link href="/projects" className="text-[12.5px] text-mute hover:text-forest">All projects</Link>
@@ -36,9 +55,9 @@ export default function ProjectOverview() {
           <div className="flex gap-3"><Button href="/command-center">Open Command Center</Button><Button href="/simulations" variant="outline">Run Simulation</Button></div>
         </div>
 
-        <div className="mt-14 grid gap-px border border-rule bg-rule md:grid-cols-4">
+        <div className="mt-14 grid gap-4 md:grid-cols-4">
           {[["Resilience score", String(p.score)], ["Services", String(p.services)], ["Current alerts", String(p.alerts)], ["Last simulation", p.lastSim]].map(([k, v], i) => (
-            <div key={k} className="bg-paper p-6">
+            <div key={k} className="glass rounded-2xl p-6">
               <div className="text-[12px] text-mute">{k}</div>
               <div className={i === 3 ? "mt-2 text-[15px] leading-snug" : "num mt-1 text-[48px] font-light leading-none"}>{v}</div>
             </div>

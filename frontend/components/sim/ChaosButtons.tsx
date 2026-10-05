@@ -12,10 +12,10 @@ const ITEMS: { id: ScenarioId | "reset"; label: string; key: string }[] = [
 ];
 
 export default function ChaosButtons({ hotkeys = false, className }: { hotkeys?: boolean; className?: string }) {
-  const startMock = useFlowStore((s) => s.startMock);
+  const fireFault = useFlowStore((s) => s.fire);
   const reset = useFlowStore((s) => s.reset);
   const scenario = useFlowStore((s) => s.scenario);
-  const fire = (id: ScenarioId | "reset") => (id === "reset" ? reset() : void startMock(id));
+  const fire = (id: ScenarioId | "reset") => (id === "reset" ? reset() : void fireFault(id));
 
   useEffect(() => {
     if (!hotkeys) return;

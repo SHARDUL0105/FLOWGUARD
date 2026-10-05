@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 type Variant = "solid" | "outline" | "ghost" | "paper";
 const styles: Record<Variant, string> = {
   solid: "bg-forest text-paper hover:bg-forest-2",
-  outline: "border border-ink/20 text-ink hover:border-ink",
+  outline: "border border-ink/20 bg-surface/40 text-ink backdrop-blur-md hover:border-ink hover:bg-surface/60",
   ghost: "text-ink hover:text-forest",
-  paper: "bg-paper text-forest hover:bg-white",
+  paper: "bg-paper/90 text-forest backdrop-blur-md hover:bg-surface",
 };
 
 interface Common { variant?: Variant; className?: string; children: React.ReactNode }

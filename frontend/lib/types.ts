@@ -30,7 +30,10 @@ export interface WhatIfResponse {
   accuracy: number; note: string | null;
 }
 
-export interface PRListItem { id: number; title: string; author: string; status: string }
+export interface PRListItem {
+  id: number; title: string; author: string; status: string; project_id?: string;
+  source?: "demo" | "user"; description?: string; diff?: string; created_at?: string;
+}
 
 export interface ScenarioNumbers { p95_ms: number; error_rate: number }
 export interface AnalyzeResponse {

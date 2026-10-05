@@ -5,3 +5,4 @@ httpx>=0.27,<1
 python-dotenv>=1.0,<2
 networkx>=3.3,<4
 pytest>=8,<9
+pymongo[srv]>=4.8,<5

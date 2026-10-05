@@ -46,7 +46,7 @@ export default function AlertsPage() {
   const shown = all.filter((a) => tab === "all" || a.sev === tab);
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-screen">
       <SiteNav />
       <main className="mx-auto max-w-[1000px] px-6 pb-24 pt-14 md:px-10">
         <h1 className="text-[clamp(44px,7vw,96px)] font-light leading-none tracking-tight">Alerts</h1>

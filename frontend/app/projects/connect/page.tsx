@@ -34,17 +34,18 @@ export default function ConnectPage() {
     return () => clearTimeout(id);
   }, [stage, running]);
 
-  const start = () => {
+  const start = async () => {
     const label = name.trim() || (opt === "github" && repo.trim() ? repo.trim().split("/").pop() || "Imported project" : opt === "demo" ? "Demo checkout" : "Imported project");
     const src = opt === "github" ? `GitHub: ${repo || "repository"}` : opt === "config" ? `Config: ${file || "file"}` : opt === "map" ? "Service map" : "Demo data";
-    setSlug(addProject(label, src).slug);
+    const newProject = await addProject(label, src);
+    setSlug(newProject.slug);
     setStage(0);
   };
   const ready = stage === STAGES.length - 1;
   const canStart = opt === "demo" || opt === "map" || (opt === "github" && repo.trim().length > 3) || (opt === "config" && file);
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-screen">
       <SiteNav />
       <main className="mx-auto grid max-w-[1200px] gap-16 px-6 pb-24 pt-14 md:grid-cols-[5fr_6fr] md:px-10">
         <div>
@@ -59,7 +60,7 @@ export default function ConnectPage() {
               <motion.div key="choose" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
                 <div role="radiogroup" aria-label="Import method">
                   {OPTIONS.map((o) => (
-                    <button key={o.id} role="radio" aria-checked={opt === o.id} onClick={() => setOpt(o.id)} className={cn("block w-full border-t border-rule py-5 text-left transition-colors", opt === o.id ? "bg-ivory/60" : "hover:bg-ivory/30")}>
+                    <button key={o.id} role="radio" aria-checked={opt === o.id} onClick={() => setOpt(o.id)} className={cn("block w-full border-t border-rule py-5 text-left transition-colors", opt === o.id ? "glass rounded-lg" : "hover:bg-surface/40 rounded-lg")}>
                       <div className="flex items-center justify-between px-1"><span className="text-[17px] font-semibold tracking-tight">{o.title}</span><span className={cn("h-3 w-3 rounded-full border", opt === o.id ? "border-forest bg-forest" : "border-ink/30")} /></div>
                       <p className="mt-1 px-1 text-[12.5px] text-mute">{o.hint}</p>
                     </button>
@@ -70,7 +71,7 @@ export default function ConnectPage() {
                   <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name (optional)" className="w-full border-b border-ink/20 bg-transparent py-2 text-[14px] outline-none placeholder:text-mute/70 focus:border-forest" />
                   {opt === "github" && <input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="github.com/acme/checkout" className="w-full border-b border-ink/20 bg-transparent py-2 text-[14px] outline-none placeholder:text-mute/70 focus:border-forest" />}
                   {opt === "config" && (
-                    <label className="block cursor-pointer border border-dashed border-ink/25 p-4 text-[13px] text-mute hover:border-forest">
+                    <label className="block cursor-pointer rounded-xl border border-dashed border-ink/25 bg-surface/30 p-4 backdrop-blur-sm text-[13px] text-mute hover:border-forest">
                       {file || "Choose a .yaml or .json file"}
                       <input type="file" accept=".yaml,.yml,.json" className="sr-only" onChange={(e) => setFile(e.target.files?.[0]?.name ?? "")} />
                     </label>

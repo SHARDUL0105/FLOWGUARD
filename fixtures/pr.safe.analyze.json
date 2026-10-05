@@ -1,0 +1,45 @@
+{
+ "id": 13,
+ "score_base": 84,
+ "score_pr": 84,
+ "verdict": "pass",
+ "per_scenario": [
+  {
+   "scenario": "db_latency",
+   "base": {
+    "p95_ms": 628,
+    "error_rate": 0.004
+   },
+   "pr": {
+    "p95_ms": 628,
+    "error_rate": 0.004
+   }
+  },
+  {
+   "scenario": "service_down",
+   "base": {
+    "p95_ms": 369,
+    "error_rate": 0.0
+   },
+   "pr": {
+    "p95_ms": 369,
+    "error_rate": 0.0
+   }
+  },
+  {
+   "scenario": "traffic_spike",
+   "base": {
+    "p95_ms": 2018,
+    "error_rate": 0.028
+   },
+   "pr": {
+    "p95_ms": 2018,
+    "error_rate": 0.028
+   }
+  }
+ ],
+ "findings": [],
+ "cascade_path": [],
+ "diff": "--- a/README.md\n+++ b/README.md\n@@ -10,3 +10,5 @@\n ## Logging\n Detailed debug logs for order flows have been moved to standard JSON logging.\n+Health check probes will not log at info level.",
+ "comment": "### FLOWGUARD Resilience Check\n**Pass.** Resilience 84 -> 84\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 628 ms / 0.4% |\n| Service down | 369 ms / 0.0% | 369 ms / 0.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: None (no configuration risks identified).\nCascade: None (no cascading failure observed).\n\nSuggested fix: None required. Pull request maintains baseline resilience."
+}

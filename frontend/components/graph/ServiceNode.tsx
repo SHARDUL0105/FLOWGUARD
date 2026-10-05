@@ -4,6 +4,7 @@ import type { Node, NodeProps } from "@xyflow/react";
 import { motion } from "framer-motion";
 import { memo } from "react";
 import NumberTicker from "@/components/effects/NumberTicker";
+import { C } from "@/lib/theme";
 import { STATUS_COLOR, STATUS_WORD } from "@/lib/colors";
 import { useFlowStore } from "@/store/flowguardStore";
 
@@ -18,7 +19,7 @@ function Sparkline({ values, color, base }: { values: number[]; color: string; b
   const last = pts[pts.length - 1];
   return (
     <svg width={W} height={H} className="block overflow-visible">
-      <line x1="0" x2={W} y1={baseY} y2={baseY} stroke="#101412" strokeOpacity="0.14" strokeDasharray="2 3" />
+      <line x1="0" x2={W} y1={baseY} y2={baseY} stroke={C.ink} strokeOpacity="0.14" strokeDasharray="2 3" />
       <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke={color} strokeWidth="1.4" strokeLinejoin="round" />
       <circle cx={last[0]} cy={last[1]} r="2.3" fill={color} />
     </svg>
@@ -37,7 +38,7 @@ function ServiceNodeInner({ data }: NodeProps<Node<ServiceNodeData>>) {
   return (
     <motion.div
       className="relative w-[196px] border bg-paper px-3.5 pb-2.5 pt-3"
-      style={{ borderColor: calm ? "#E6E8E3" : color }}
+      style={{ borderColor: calm ? C.rule : color }}
       animate={
         status === "critical"
           ? { x: [0, -1, 1, -0.5, 0], boxShadow: [`0 0 0 0 ${color}00`, `0 0 0 6px ${color}22`, `0 0 0 0 ${color}00`] }

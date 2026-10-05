@@ -20,6 +20,9 @@ interface Props {
 
 const VB_W = 1600, VB_H = 900, FONT = 232, BASE_Y = 520, MAX_SCALE = 90;
 const ZOOM_END = 0.58; // progress at which the letter fills the screen
+// Progress value reached at the end of the pinned scroll. Just past ZOOM_END, so the page moves on almost as soon as
+// the zoom finishes instead of holding on an empty green screen.
+const END_PROGRESS = 0.7;
 
 export function GlyphPortal({ word, target, overlay, children, length = 5 }: Props) {
   const section = useRef<HTMLDivElement>(null);
@@ -29,7 +32,12 @@ export function GlyphPortal({ word, target, overlay, children, length = 5 }: Pro
   const [reduced, setReduced] = useState(false);
 
   const { scrollYProgress } = useScroll({ target: section, offset: ["start start", "end end"] });
-  const p = useSpring(scrollYProgress, { stiffness: 120, damping: 34, mass: 0.5 }); // critically damped, no bounce
+  // Progress reaches 1 slightly before the section unsticks, and the spring settles inside that gap, so nothing is
+  // still moving when the page scrolls on to the next section.
+  const settled = useTransform(scrollYProgress, [0, 0.96], [0, END_PROGRESS]);
+  const p = useSpring(settled, { stiffness: 150, damping: 32, mass: 0.4, restDelta: 0.0005 }); // critically damped, no bounce
+  const sticky = useRef<HTMLDivElement>(null);
+  const applied = useRef(-1);
 
   useEffect(() => {
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -46,8 +54,11 @@ export function GlyphPortal({ word, target, overlay, children, length = 5 }: Pro
   }, [target]);
 
   const apply = (v: number) => {
+    if (sticky.current) sticky.current.dataset.navTone = v > 0.38 ? "dark" : "light"; // the navbar reads this
     const g = group.current;
     if (!g) return;
+    if (v > 0.64 && applied.current > 0.64) return; // the word is gone; skip the 90x vector redraw
+    applied.current = v;
     const z = Math.min(1, v / ZOOM_END);
     const s = Math.pow(MAX_SCALE, z * z * (3 - 2 * z)); // eased zoom
     const { x, y } = origin.current;
@@ -58,43 +69,47 @@ export function GlyphPortal({ word, target, overlay, children, length = 5 }: Pro
   useMotionValueEvent(p, "change", apply);
   useEffect(() => apply(p.get()), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const bg = useTransform(p, [0.2, 0.52], ["#FAFAF7", "#0B4F3A"]);
+  const deepOpacity = useTransform(p, [0.2, 0.52], [0, 1]); // paper to deep green, theme-aware
   const wordOpacity = useTransform(p, [0.5, 0.62], [1, 0]);
   const overlayOpacity = useTransform(p, [0, 0.07], [1, 0]);
   const sceneOpacity = useTransform(p, [0.5, 0.66], [0, 1]);
+  const wordDisplay = useTransform(p, (v) => (v > 0.63 ? "none" : "block"));
+  const scenePointer = useTransform(p, (v) => (v > 0.5 ? "auto" : "none"));
+  const overlayPointer = useTransform(p, (v) => (v < 0.1 ? "auto" : "none"));
 
   if (reduced) {
     return (
       <div className="relative min-h-screen bg-paper">
         <div className="absolute inset-0">{overlay}</div>
         <div className="flex min-h-screen items-center justify-center"><span className="text-[14vw] font-extrabold tracking-tighter text-forest">{word}</span></div>
-        <div className="bg-forest py-16">{children(p)}</div>
+        <div data-nav-tone="dark" className="bg-deep py-16 text-snow">{children(p)}</div>
       </div>
     );
   }
 
   return (
     <div ref={section} style={{ height: `${length * 100}vh` }} className="relative">
-      <motion.div style={{ backgroundColor: bg }} className="sticky top-0 h-screen w-full overflow-hidden">
-        <motion.svg style={{ opacity: wordOpacity }} viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full" aria-label={word}>
+      <div ref={sticky} data-nav-tone="light" className="sticky top-0 h-screen w-full overflow-hidden bg-paper">
+        <motion.div style={{ opacity: deepOpacity, willChange: "opacity" }} className="absolute inset-0 bg-deep" aria-hidden />
+        <motion.svg style={{ opacity: wordOpacity, display: wordDisplay }} viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full" aria-label={word}>
           <g ref={group}>
             <text
               ref={textRef}
               x={VB_W / 2}
               y={BASE_Y}
               textAnchor="middle"
-              fill="#0B4F3A"
+              fill="rgb(var(--forest))"
               style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", fontWeight: 800, fontSize: FONT, letterSpacing: -9 }}
             >
               {word}
             </text>
           </g>
         </motion.svg>
-        <motion.div style={{ opacity: overlayOpacity }} className="pointer-events-none absolute inset-0 [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
+        <motion.div style={{ opacity: overlayOpacity, pointerEvents: overlayPointer }} className="absolute inset-0">
           {overlay}
         </motion.div>
-        <motion.div style={{ opacity: sceneOpacity }} className="absolute inset-0">{children(p)}</motion.div>
-      </motion.div>
+        <motion.div style={{ opacity: sceneOpacity, pointerEvents: scenePointer, willChange: "opacity" }} className="absolute inset-0">{children(p)}</motion.div>
+      </div>
     </div>
   );
 }
