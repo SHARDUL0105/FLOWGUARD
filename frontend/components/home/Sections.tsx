@@ -220,12 +220,23 @@ export function AutoFix() {
 /* ---------- Final CTA ---------- */
 export function FinalCTA() {
   return (
-    <section className="px-6 pb-14 pt-36 md:px-14">
-      <div className="mx-auto max-w-[1200px]">
-        <h2 className="max-w-[1000px] text-[clamp(40px,8vw,120px)] font-light leading-[0.95] tracking-tight">Your systems don&apos;t have to fail first.</h2>
-        <div className="mt-12 flex flex-wrap items-center gap-4"><Button href="/projects/connect">Connect a Project</Button><Button href="/command-center" variant="outline">Enter Command Center</Button></div>
-        <div className="mt-28 overflow-hidden"><div className="select-none whitespace-nowrap text-[clamp(60px,17vw,260px)] font-extrabold leading-[0.85] tracking-tighter text-forest">FLOWGUARD.</div></div>
-        <div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-rule pt-5 text-[11.5px] text-mute">
+    <section className="flex min-h-[90vh] flex-col justify-between px-6 pb-10 pt-24 md:px-14">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col justify-center">
+        <h2 className="max-w-[1000px] text-[clamp(40px,7vw,110px)] font-light leading-[0.95] tracking-tight">
+          Your systems don&apos;t have to fail first.
+        </h2>
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <Button href="/projects/connect">Connect a Project</Button>
+          <Button href="/command-center" variant="outline">Enter Command Center</Button>
+        </div>
+      </div>
+      <div className="mx-auto w-full max-w-[1200px]">
+        <div className="mt-12 overflow-hidden">
+          <div className="select-none whitespace-nowrap text-[clamp(60px,16vw,250px)] font-extrabold leading-[0.85] tracking-tighter text-forest">
+            FLOWGUARD.
+          </div>
+        </div>
+        <div className="mt-6 flex flex-wrap justify-between gap-3 border-t border-rule pt-5 text-[11px] text-mute">
           <span>Validated on a simulated environment. Production path: OpenTelemetry traces and real fault injection.</span>
           <span>Team CodeX, CURIOUSPARC 2026</span>
         </div>
