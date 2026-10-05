@@ -1,26 +1,40 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import CustomTopologyPreview from "@/components/graph/CustomTopologyPreview";
 import MiniGraph from "@/components/graph/MiniGraph";
 import SiteNav from "@/components/layout/SiteNav";
 import { Trend } from "@/components/projects/Trend";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { useProjectsStore } from "@/store/projectsStore";
 
 export default function ProjectOverview() {
   const { project } = useParams<{ project: string }>();
   const { projects, loading, fetchProjects } = useProjectsStore();
   const p = projects.find((x) => x.slug === project);
+  const [customTopology, setCustomTopology] = useState<{ nodes: any[]; edges: any[] } | null>(null);
+  const [topoLoading, setTopoLoading] = useState(true);
 
   useEffect(() => {
     fetchProjects();
-    
-    // Also re-fetch when tenant changes
+
+    // Re-fetch when tenant changes
     const handleTenantChange = () => fetchProjects();
     window.addEventListener("fg-tenant-change", handleTenantChange);
     return () => window.removeEventListener("fg-tenant-change", handleTenantChange);
   }, []);
+
+  // Load custom topology for this project
+  useEffect(() => {
+    if (!project) return;
+    setTopoLoading(true);
+    api.getTopology(project)
+      .then(t => { setCustomTopology(t && t.nodes?.length ? t : null); })
+      .catch(() => setCustomTopology(null))
+      .finally(() => setTopoLoading(false));
+  }, [project]);
 
   if (loading && !p) {
     return (
@@ -46,7 +60,7 @@ export default function ProjectOverview() {
     <div className="min-h-screen">
       <SiteNav />
       <main className="mx-auto max-w-[1200px] px-6 pb-24 pt-12 md:px-10">
-        <Link href="/projects" className="text-[12.5px] text-mute hover:text-forest">All projects</Link>
+        <Link href="/projects" className="text-[12.5px] text-mute hover:text-forest">← All projects</Link>
         <div className="mt-6 flex flex-col justify-between gap-8 md:flex-row md:items-end">
           <div>
             <h1 className="text-[clamp(40px,6vw,84px)] font-light leading-none tracking-tight">{p.name}</h1>
@@ -68,14 +82,41 @@ export default function ProjectOverview() {
           ))}
         </div>
 
+        {/* Topology section — shows custom topology if saved, otherwise default MiniGraph */}
         <section className="mt-16">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[13px] font-semibold">Dependency graph</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-[13px] font-semibold">Dependency graph</h2>
+              {customTopology && (
+                <span className="rounded-full border border-forest/30 bg-mint/50 px-2 py-0.5 text-[10px] font-medium text-forest">
+                  Custom · {customTopology.nodes.length} nodes
+                </span>
+              )}
+            </div>
             <Link href={`/projects/${project}/topology`} className="text-[12px] text-forest underline underline-offset-4">
-              Edit topology →
+              {customTopology ? "Edit topology →" : "Build topology →"}
             </Link>
           </div>
-          <div className="mt-4 border-y border-rule py-8"><MiniGraph statuses={p.alerts ? { database: "degraded" } : {}} /></div>
+
+          <div className="border-y border-rule py-8">
+            {topoLoading ? (
+              <div className="flex h-32 items-center justify-center">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-forest border-t-transparent" />
+              </div>
+            ) : customTopology ? (
+              <CustomTopologyPreview nodes={customTopology.nodes} edges={customTopology.edges} />
+            ) : (
+              <div>
+                <MiniGraph statuses={p.alerts ? { database: "degraded" } : {}} />
+                <p className="mt-4 text-center text-[12px] text-mute">
+                  Showing default checkout topology.{" "}
+                  <Link href={`/projects/${project}/topology`} className="text-forest underline underline-offset-2">
+                    Build a custom topology for this project →
+                  </Link>
+                </p>
+              </div>
+            )}
+          </div>
         </section>
 
         <div className="mt-16 grid gap-14 md:grid-cols-2">
