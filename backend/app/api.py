@@ -181,6 +181,128 @@ def save_topology(project_id: str, body: dict, tenant_id: str = Depends(current_
         raise HTTPException(404, "Project not found")
     return {"ok": True, "nodes": len(body.get("nodes", [])), "edges": len(body.get("edges", []))}
 
+@router.post('/projects/{project_id}/simulate')
+def simulate_project(project_id: str, tenant_id: str = Depends(current_tenant)):
+    """Run all 3 fault scenarios against the project's custom topology and return a resilience report."""
+    from .sim.topo_adapter import build_sim_structures
+    from .sim.engine import run as sim_run, window, score as sim_score
+    from .sim.config import DEFAULT_SEVERITY
+
+    p = db.get_project(tenant_id, project_id)
+    if not p:
+        raise HTTPException(404, "Project not found")
+
+    topo = p.get("topology")
+    if not topo or not topo.get("nodes"):
+        raise HTTPException(400, "No custom topology saved for this project yet. Build one in the Topology Editor first.")
+
+    services, order, downstream, edges = build_sim_structures(topo)
+
+    # We need the sim engine to use our custom services/order/downstream instead of the hardcoded ones.
+    # Run the reference_sim directly since it accepts arbitrary edges, services, order, downstream.
+    import copy, math, random
+
+    def _run(fault=None, severity=3.0, ticks=60, seed=7):
+        NO_TIMEOUT = 30000
+        rnd = random.Random(seed)
+        state = {s: {"resp": services[s]["base"], "succ": 1.0, "own": services[s]["base"], "rho": 0.0, "load": 0.0} for s in order}
+        out = []
+        for t in range(-10, ticks):
+            mult = {s: 1.0 for s in order}; down = set(); load_mult = 1.0
+            if fault and t >= 10:
+                if fault == "db_latency":
+                    # degrade the first leaf node (highest latency base)
+                    leaf = max((s for s in order if not downstream.get(s)), key=lambda s: services[s]["base"], default=order[-1])
+                    mult[leaf] = severity
+                elif fault == "service_down":
+                    # bring down the second node in topo order
+                    if len(order) > 1: down.add(order[1])
+                elif fault == "traffic_spike":
+                    load_mult = severity
+
+            L0 = services[order[0]]["base"] * 5 * load_mult * (1 + rnd.gauss(0, 0.02))
+            edge_cache = {}
+            for (a, b), cfg in edges.items():
+                cb = state.get(b, {"resp": 100, "succ": 1.0})
+                if b in down: cb = {"resp": 5.0, "succ": 0.0}
+                R, p_succ = cb["resp"], cb["succ"]
+                T = cfg["timeout"] or NO_TIMEOUT
+                if cfg["breaker"] and p_succ < 0.5:
+                    edge_cache[(a,b)] = (1.0 if cfg["fallback"] else 0.0, 2.0, 0.0)
+                else:
+                    p_att = p_succ * (1 - math.exp(-((T/R)**2)))
+                    t_att = min(R, T); q, k = 1 - p_att, cfg["retries"]
+                    attempts = (k+1) if q >= 0.999999 else (1 - q**(k+1))/(1-q)
+                    succ_e = 1.0 if cfg["fallback"] else 1 - q**(k+1)
+                    edge_cache[(a,b)] = (succ_e, t_att*attempts, attempts)
+
+            lam = {s: 0.0 for s in order}; lam[order[0]] = L0
+            for s in order:
+                r = lam[s]; prior_ok = 1.0
+                for d in downstream.get(s, []):
+                    if (s,d) not in edge_cache: continue
+                    succ_e, ms, att = edge_cache[(s,d)]
+                    lam[d] += r * prior_ok * att; prior_ok *= succ_e
+
+            new = {}
+            for s in reversed(order):
+                cap_eff = services[s]["cap"] / mult.get(s, 1.0)
+                rho = lam[s] / cap_eff if cap_eff else 9
+                own = services[s]["base"] * mult.get(s,1.0) * (1 + rnd.gauss(0, 0.03)) / (1 - min(rho, 0.95))
+                serve = 0.0 if s in down else min(1.0, 1/rho) if rho > 1 else 1.0
+                resp, prior_ok = own, 1.0
+                for d in downstream.get(s, []):
+                    if (s,d) not in edge_cache: continue
+                    succ_e, ms, _ = edge_cache[(s,d)]
+                    resp += prior_ok * ms; prior_ok *= succ_e
+                new[s] = {"resp": resp, "succ": serve * prior_ok, "own": own, "rho": rho, "load": lam[s]}
+            state = new
+            if t >= 0:
+                fr = state[order[0]]
+                out.append({"t": t, "p95": min(1.5*fr["resp"], 3000), "err": 1 - fr["succ"]})
+        return out
+
+    def _window(out):
+        w = [o for o in out if 20 <= o["t"] < 60]
+        if not w: return 0.0, 0.0
+        return sum(o["p95"] for o in w)/len(w), sum(o["err"] for o in w)/len(w)
+
+    base_p95, base_err = _window(_run(None))
+    results = {}
+    penalties = {}
+    for sc, sev in DEFAULT_SEVERITY.items():
+        p95, err = _window(_run(sc, sev))
+        e_pen = min(1.0, err / 0.5)
+        l_pen = min(1.0, max(0.0, (p95/base_p95 - 1)/3)) if base_p95 > 0 else 0
+        pen = round(0.6*e_pen + 0.4*l_pen, 3)
+        penalties[sc] = pen
+        results[sc] = {"p95_ms": round(p95), "error_rate": round(err, 3), "base_p95_ms": round(base_p95), "base_err": round(base_err, 3)}
+
+    resilience_score = round(100 * (1 - sum(penalties.values()) / len(penalties)))
+    report = {
+        "project_id": project_id,
+        "score": resilience_score,
+        "nodes": len(topo.get("nodes", [])),
+        "edges_count": len(topo.get("edges", [])),
+        "scenarios": results,
+        "penalties": penalties,
+        "baseline": {"p95_ms": round(base_p95), "error_rate": round(base_err, 3)},
+    }
+
+    # Persist result into the project's sim history
+    from datetime import datetime, timezone
+    sim_record = {
+        "name": f"Fault scan · {len(topo.get('nodes', []))} nodes",
+        "when": datetime.now(timezone.utc).strftime("%b %d, %H:%M"),
+        "result": f"Score {resilience_score} · {', '.join(sc for sc, p in penalties.items() if p > 0.3)}",
+    }
+    db.update_project(tenant_id, project_id, {
+        "score": resilience_score,
+        "last_sim": sim_record["name"],
+    })
+
+    return report
+
 @router.websocket("/ws")
 async def websocket(ws: WebSocket):
     await ws.accept()

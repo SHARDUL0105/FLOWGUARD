@@ -101,4 +101,7 @@ export const api = {
   async saveTopology(projectId: string, topology: { nodes: any[]; edges: any[] }): Promise<{ ok: boolean }> {
     return await req(`/api/projects/${projectId}/topology`, { method: "PUT", body: JSON.stringify(topology) });
   },
+  async simulateProject(projectId: string): Promise<Record<string, any>> {
+    return await req(`/api/projects/${projectId}/simulate`, { method: "POST" });
+  },
 };

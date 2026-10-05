@@ -162,6 +162,9 @@ export default function TopologyEditorPage() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState(projectId);
+  const [simulating, setSimulating] = useState(false);
+  const [simResult, setSimResult] = useState<Record<string, any> | null>(null);
+  const [simError, setSimError] = useState("");
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   // Load existing topology from Atlas on mount
@@ -272,6 +275,21 @@ export default function TopologyEditorPage() {
     }
   };
 
+  // Run the backend fault scanner against the saved topology
+  const runScan = async () => {
+    setSimulating(true); setSimResult(null); setSimError("");
+    try {
+      // Auto-save first so the backend has the latest topology
+      await save();
+      const result = await api.simulateProject(projectId);
+      setSimResult(result);
+    } catch (e: any) {
+      setSimError(e?.message ?? "Simulation failed");
+    } finally {
+      setSimulating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -298,11 +316,14 @@ export default function TopologyEditorPage() {
           <AnimatePresence>
             {saved && (
               <motion.span key="saved" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="text-[12px] text-forest">✓ Saved to Atlas</motion.span>
+                className="text-[12px] text-forest">✓ Saved</motion.span>
             )}
           </AnimatePresence>
-          <Button variant="outline" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : "Save topology"}
+          <Button variant="outline" onClick={save} disabled={saving || simulating}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+          <Button onClick={runScan} disabled={simulating || saving || nodes.length === 0}>
+            {simulating ? "Scanning…" : "Run Fault Scan"}
           </Button>
         </div>
       </div>
@@ -389,6 +410,64 @@ export default function TopologyEditorPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Fault Scan Results Bar */}
+      <AnimatePresence>
+        {(simulating || simResult || simError) && (
+          <motion.div
+            key="simbar"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 32 }}
+            className="border-t border-rule bg-paper/95 backdrop-blur-md px-6 py-4"
+          >
+            {simulating && (
+              <div className="flex items-center gap-3">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-forest border-t-transparent" />
+                <span className="text-[13px] text-mute">Running 3 fault scenarios against your topology…</span>
+              </div>
+            )}
+            {simError && <p className="text-[13px] text-crit">{simError}</p>}
+            {simResult && (
+              <div className="flex flex-wrap items-center gap-6">
+                {/* Score */}
+                <div className="flex items-baseline gap-2">
+                  <span className="num text-[42px] font-light leading-none"
+                    style={{ color: simResult.score >= 80 ? "#218B6A" : simResult.score >= 60 ? "#C9851F" : "#D94B45" }}>
+                    {simResult.score}
+                  </span>
+                  <span className="text-[12px] text-mute">/ 100 resilience</span>
+                </div>
+
+                {/* Per-scenario breakdown */}
+                <div className="flex flex-wrap gap-4">
+                  {Object.entries(simResult.scenarios as Record<string, any>).map(([sc, data]) => {
+                    const label: Record<string, string> = { db_latency: "DB Latency", service_down: "Service Down", traffic_spike: "Traffic Spike" };
+                    const pen = simResult.penalties?.[sc] ?? 0;
+                    const color = pen > 0.5 ? "#D94B45" : pen > 0.2 ? "#C9851F" : "#218B6A";
+                    return (
+                      <div key={sc} className="glass rounded-xl px-4 py-2.5">
+                        <div className="text-[10px] text-mute mb-1">{label[sc] ?? sc}</div>
+                        <div className="num text-[15px] font-medium" style={{ color }}>{data.p95_ms} ms</div>
+                        <div className="text-[10px] text-mute">{(data.error_rate * 100).toFixed(1)}% err</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Baseline */}
+                <div className="text-[11px] text-mute">
+                  <div>Baseline p95: {simResult.baseline?.p95_ms} ms</div>
+                  <div>{simResult.nodes} nodes · {simResult.edges_count} edges</div>
+                </div>
+
+                <button onClick={() => setSimResult(null)} className="ml-auto text-[11px] text-mute hover:text-ink">Dismiss</button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
