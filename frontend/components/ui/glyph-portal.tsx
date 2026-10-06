@@ -81,7 +81,7 @@ export function GlyphPortal({ word, target, overlay, children, length = 5 }: Pro
     return (
       <div className="relative min-h-screen bg-paper">
         <div className="absolute inset-0">{overlay}</div>
-        <div className="flex min-h-screen items-center justify-center"><span className="text-[14vw] font-extrabold tracking-tighter text-forest">{word}</span></div>
+        <div className="flex min-h-screen items-center justify-center"><span className="text-[11vw] font-extrabold tracking-tighter text-forest">{word}</span></div>
         <div data-nav-tone="dark" className="bg-deep py-16 text-snow">{children(p)}</div>
       </div>
     );

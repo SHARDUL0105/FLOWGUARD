@@ -85,7 +85,7 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
         <Wordmark />
         <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
           {LINKS.map((l) => (
-            <Link key={l.label} href={l.href} className={cn("transition-colors hover:text-forest font-medium", path === l.href ? "text-forest font-semibold" : "text-ink/70")}>
+            <Link key={l.label} href={l.href} className={cn("transition-colors hover:text-forest", path === l.href ? "text-forest" : "text-ink/70")}>
               {l.label}
             </Link>
           ))}
@@ -114,7 +114,7 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
             )}
           </button>
 
-          <Link href="/projects/connect" className="navctl rounded-full border border-ink/20 bg-surface/40 px-4 py-1.5 backdrop-blur transition-colors hover:border-forest hover:bg-forest hover:text-paper font-medium">
+          <Link href="/projects/connect" className="navctl rounded-full border border-ink/20 bg-surface/40 px-4 py-1.5 backdrop-blur transition-colors hover:border-forest hover:bg-forest hover:text-paper">
             Connect project
           </Link>
         </div>

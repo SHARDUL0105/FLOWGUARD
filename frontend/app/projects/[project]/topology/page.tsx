@@ -170,7 +170,7 @@ export default function TopologyEditorPage() {
   // Load existing topology from Atlas on mount
   useEffect(() => {
     api.getProject(projectId).then(p => { if (p?.name) setProjectName(p.name); });
-    api.getTopology(projectId).then(topo => {
+    api.getTopology(projectId).then(async topo => {
       if (topo?.nodes?.length) {
         setNodes(topo.nodes.map((n: any) => ({
           id: n.id, type: "editor",
@@ -182,8 +182,28 @@ export default function TopologyEditorPage() {
           data: { timeout_ms: e.timeout_ms, retries: e.retries, breaker: e.breaker, fallback: e.fallback },
         })));
       } else {
+        // No saved topology yet — seed with starter and persist it immediately so
+        // "Run Fault Scan" works without requiring a manual Save step first.
         const starter = starterTopology();
         setNodes(starter.nodes); setEdges(starter.edges);
+        try {
+          await api.saveTopology(projectId, {
+            nodes: starter.nodes.map(n => ({
+              id: n.id, label: n.data.label, type: n.data.kind,
+              layer: 0, base_ms: n.data.base_ms, capacity_rps: n.data.capacity_rps,
+              x: n.position.x, y: n.position.y,
+            })),
+            edges: starter.edges.map(e => ({
+              id: e.id, source: e.source, target: e.target,
+              timeout_ms: (e.data as any)?.timeout_ms ?? 700,
+              retries: (e.data as any)?.retries ?? 1,
+              breaker: (e.data as any)?.breaker ?? true,
+              fallback: (e.data as any)?.fallback ?? false,
+            })),
+          });
+        } catch {
+          // Silent — user can still manually Save if the backend is unreachable
+        }
       }
       setLoading(false);
     });
