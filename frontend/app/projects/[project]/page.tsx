@@ -31,7 +31,7 @@ export default function ProjectOverview() {
     if (!project) return;
     setTopoLoading(true);
     api.getTopology(project)
-      .then(t => { setCustomTopology(t && t.nodes?.length ? t : null); })
+      .then(t => { setCustomTopology(t && t.nodes?.length ? (t as { nodes: any[]; edges: any[] }) : null); })
       .catch(() => setCustomTopology(null))
       .finally(() => setTopoLoading(false));
   }, [project]);

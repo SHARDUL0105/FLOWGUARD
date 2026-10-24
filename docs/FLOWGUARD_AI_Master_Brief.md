@@ -29,7 +29,7 @@ Rules you must follow:
 
 **Five stages shown in the UI:** DETECT -> UNDERSTAND -> PREDICT -> SIMULATE -> RECOMMEND.
 
-**Hackathon facts.** Event: CURIOUSPARC 2026 State Innovation Challenge. Prototype deadline: 4 Oct, 11:59 pm. Team CodeX: Shardul Kulkarni (frontend, AI prompts, demo/pitch owner), Abhiraj Mangire (backend, simulator, integration owner), Sneha Barge (intelligence/scoring), Vaishnavi Repal (PR checks, Auto-Fix, AI integration).
+**Hackathon facts.** Event: Code Apex 2026 Hackathon. Prototype deadline: 4 Oct, 11:59 pm. Team CodeX: Shardul Kulkarni (frontend, AI prompts, demo/pitch owner), Abhiraj Mangire (backend, simulator, integration owner), Sneha Barge (intelligence/scoring), Vaishnavi Repal (PR checks, Auto-Fix, AI integration).
 
 **Honest framing (important for the UI copy and README).** The prototype runs on a SIMULATED microservice environment that lives inside the backend. The production path is OpenTelemetry traces and real fault injection (Toxiproxy). Never claim the prototype monitors a real production system. Say "validated on a simulated environment".
 

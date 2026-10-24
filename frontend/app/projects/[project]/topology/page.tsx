@@ -51,6 +51,8 @@ function EditorNode({ data, selected }: NodeProps<Node<EditorNodeData>>) {
 const nodeTypes = { editor: EditorNode };
 
 // ─── Default starter topology ─────────────────────────────────────────────────
+type EdgeData = { timeout_ms: number | null; retries: number; breaker: boolean; fallback: boolean };
+
 function starterTopology() {
   return {
     nodes: [
@@ -64,7 +66,7 @@ function starterTopology() {
       { id: "gw-sb",  source: "gateway",   target: "service-b", type: "smoothstep", animated: true, data: { timeout_ms: 700, retries: 1, breaker: true, fallback: false } },
       { id: "sa-db",  source: "service-a", target: "database",  type: "smoothstep", animated: true, data: { timeout_ms: 500, retries: 2, breaker: true, fallback: false } },
       { id: "sb-db",  source: "service-b", target: "database",  type: "smoothstep", animated: true, data: { timeout_ms: 500, retries: 2, breaker: true, fallback: false } },
-    ] as Edge[],
+    ] as Edge<EdgeData>[],
   };
 }
 
@@ -98,8 +100,6 @@ function NodePanel({ node, onChange, onDelete }: { node: Node<EditorNodeData>; o
     </div>
   );
 }
-
-type EdgeData = { timeout_ms: number | null; retries: number; breaker: boolean; fallback: boolean };
 
 function EdgePanel({ edge, onChange, onDelete }: { edge: Edge<EdgeData>; onChange: (id: string, patch: Partial<EdgeData>) => void; onDelete: (id: string) => void }) {
   const d = edge.data ?? { timeout_ms: 700, retries: 1, breaker: true, fallback: false };

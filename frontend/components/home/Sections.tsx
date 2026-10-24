@@ -227,7 +227,7 @@ export function FinalCTA() {
         <div className="mt-28 overflow-hidden"><div className="select-none whitespace-nowrap text-[clamp(40px,11.5vw,170px)] font-extrabold leading-[0.85] tracking-tighter text-forest">FLOWGUARD.</div></div>
         <div className="mt-8 flex flex-wrap justify-between gap-3 border-t border-rule pt-5 text-[11.5px] text-mute">
           <span>Validated on a simulated environment. Production path: OpenTelemetry traces and real fault injection.</span>
-          <span>Team CodeX, CURIOUSPARC 2026</span>
+          <span>Team CodeX, Code Apex 2026</span>
         </div>
       </div>
     </section>

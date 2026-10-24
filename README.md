@@ -1,6 +1,6 @@
 # FLOWGUARD
 Predictive reliability platform: detect, understand, predict, simulate and fix cascading failures
-before they ship. Team CodeX - CURIOUSPARC 2026.
+before they ship. Team CodeX - Code Apex 2026.
 
 > Don't wait for your system to fail. Predict it. Simulate it. Stop it.
 

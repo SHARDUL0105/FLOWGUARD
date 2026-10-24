@@ -16,6 +16,8 @@ from .pr.prs import list_prs
 from .pr.service import analyze_pr, heal_pr
 from .ai.brief import build_evidence, stream_brief_events
 from . import db
+from . import auth
+from .schemas import LoginRequest, RegisterRequest, LoginResponse, UserOut
 
 router=APIRouter(prefix="/api")
 
@@ -325,3 +327,74 @@ async def websocket(ws: WebSocket):
         pass
     finally:
         state.clients.discard(ws)
+
+
+# ─── Real Authentication & RBAC Routes ──────────────────────────────────────
+
+@router.post("/auth/login", response_model=LoginResponse)
+def login(body: LoginRequest):
+    user = auth.authenticate_user(body.username_or_email, body.password, body.tenant_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password. Super Admin access requires Team CodeX credentials.")
+    token = auth.create_token(user)
+    return {
+        "ok": True,
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "name": user["name"],
+            "email": user["email"],
+            "role": user["role"],
+            "tenant_id": user["tenant_id"],
+            "title": user.get("title", ""),
+            "created_at": user.get("created_at"),
+            "last_login": user.get("last_login"),
+        },
+        "message": f"Successfully authenticated as {user['name']}"
+    }
+
+@router.post("/auth/register", response_model=LoginResponse)
+def register(body: RegisterRequest):
+    try:
+        user = auth.register_user(
+            username=body.username,
+            email=body.email,
+            password=body.password,
+            tenant_id=body.tenant_id,
+            role=body.role or "company_engineer",
+            name=body.name,
+            title=body.title,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    token = auth.create_token(user)
+    return {
+        "ok": True,
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "name": user["name"],
+            "email": user["email"],
+            "role": user["role"],
+            "tenant_id": user["tenant_id"],
+            "title": user.get("title", ""),
+            "created_at": user.get("created_at"),
+            "last_login": user.get("last_login"),
+        },
+        "message": f"Account created successfully for {user['username']}"
+    }
+
+@router.get("/auth/super-admins")
+def get_super_admins():
+    """Return the official 4 Team CodeX Super Admins for hackathon judge evaluation."""
+    return {
+        "team": "Team CodeX - Code Apex 2026",
+        "super_admins": auth.get_hackathon_super_admins()
+    }
+
+@router.get("/auth/users")
+def get_users(tenant: str = Depends(current_tenant)):
+    """Return users belonging to the current tenant."""
+    return auth.list_users_for_tenant(tenant)

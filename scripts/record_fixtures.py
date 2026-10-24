@@ -1,6 +1,11 @@
 """Runs the real engine and writes fixtures/ in the exact API shapes (Brief Section 13)."""
 from pathlib import Path
 import json
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from backend.app.sim.engine import run, window
 from backend.app.sim.topology import topology_json, BASE_EDGES

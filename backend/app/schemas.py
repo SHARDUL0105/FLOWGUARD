@@ -73,3 +73,37 @@ class TopologyEdgeSave(BaseModel):
 
 class TopologySave(BaseModel):
     nodes: List[TopologyNodeSave]; edges: List[TopologyEdgeSave]
+
+
+# ─── Auth & Security Schemas ────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    username_or_email: str
+    password: str
+    tenant_id: Optional[str] = None
+
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    tenant_id: str
+    role: Optional[str] = "company_engineer"
+    name: Optional[str] = None
+    title: Optional[str] = None
+
+class UserOut(BaseModel):
+    id: str
+    username: str
+    name: str
+    email: str
+    role: str
+    tenant_id: str
+    title: Optional[str] = None
+    created_at: Optional[str] = None
+    last_login: Optional[str] = None
+
+class LoginResponse(BaseModel):
+    ok: bool = True
+    token: str
+    user: UserOut
+    message: str

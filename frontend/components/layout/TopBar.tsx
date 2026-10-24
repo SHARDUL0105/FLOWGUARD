@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import DemoModeToggle from "./DemoModeToggle";
 import { useFlowStore } from "@/store/flowguardStore";
 import { useProjectsStore } from "@/store/projectsStore";
 
@@ -49,9 +48,8 @@ export default function TopBar() {
         </div>
         <h1 className="text-[28px] font-semibold leading-none tracking-tight">Command center</h1>
       </div>
-      <div className="flex items-center gap-5">
-        <DemoModeToggle />
-        <span className={`flex items-center gap-2 text-[12.5px] ${incident ? "text-crit" : "text-ok"}`}>
+      <div className="flex items-center gap-3">
+        <span className={`flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-medium glass border border-rule ${incident ? "text-crit" : "text-ok"}`}>
           <span className={`h-2 w-2 rounded-full ${incident ? "animate-pulse bg-crit" : "bg-ok"}`} />
           {incident ? "Incident in progress" : "All services steady"}
         </span>

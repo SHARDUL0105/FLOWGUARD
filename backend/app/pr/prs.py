@@ -172,10 +172,40 @@ def list_prs(project_id: Optional[str] = None, tenant_id: str = "demo") -> List[
     return results
 
 
-def get_pr(pr_id: Union[int, str]) -> Optional[Dict[str, Any]]:
-    """Retrieve demo PR details by ID."""
+def get_pr(pr_id: Union[int, str], tenant_id: str = "demo") -> Optional[Dict[str, Any]]:
+    """Retrieve demo or user PR details by ID."""
     key = _normalize_pr_id(pr_id)
-    return DEMO_PRS.get(key)
+    if key in DEMO_PRS:
+        return DEMO_PRS[key]
+
+    try:
+        from .. import db as _db_module
+        try:
+            numeric_id = int(key)
+        except ValueError:
+            return None
+        upr = _db_module.get_user_pr(tenant_id, numeric_id)
+        if not upr:
+            for t in ["demo", "acme", "beta"]:
+                upr = _db_module.get_user_pr(t, numeric_id)
+                if upr:
+                    break
+        if upr:
+            return {
+                "id": upr.get("pr_id", numeric_id),
+                "title": upr.get("title", f"PR #{numeric_id}"),
+                "author": upr.get("author", "you"),
+                "status": upr.get("status", "open"),
+                "project_id": upr.get("project_id", "checkout"),
+                "description": upr.get("description", ""),
+                "diff": upr.get("diff", ""),
+                "target_edge": None,
+                "base_edge": None,
+                "pr_edge": None,
+            }
+    except Exception:
+        pass
+    return None
 
 
 def pr_diff(pr_id: Union[int, str]) -> str:

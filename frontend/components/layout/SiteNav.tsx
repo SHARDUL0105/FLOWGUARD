@@ -6,8 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import ThemeToggle from "./ThemeToggle";
 import SignInModal from "../auth/SignInModal";
-import { getTenant, getTenantInfo, getUserEmail } from "@/lib/tenant";
-import { User, Building, LogIn } from "lucide-react";
+import { getTenant, getTenantInfo, getUserEmail, getUserRole, getUserName, isPlatformOwner } from "@/lib/tenant";
+import { User, Building, LogIn, ShieldCheck } from "lucide-react";
 
 export function Wordmark({ className }: { className?: string }) {
   return (
@@ -21,9 +21,10 @@ export function Wordmark({ className }: { className?: string }) {
   );
 }
 
-const LINKS = [
+const BASE_LINKS = [
+  { label: "Dashboard", href: "/dashboard" },
   { label: "Projects", href: "/projects" },
-  { label: "Platform", href: "/#platform" },
+  { label: "Command Center", href: "/command-center" },
   { label: "Simulations", href: "/simulations" },
   { label: "Alerts", href: "/alerts" },
   { label: "Pull requests", href: "/pull-requests" },
@@ -35,24 +36,38 @@ const LINKS = [
 export default function SiteNav({ floating = false, className }: { floating?: boolean; className?: string }) {
   const path = usePathname();
   const ref = useRef<HTMLElement>(null);
+  const [mounted, setMounted] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [tenantId, setTenantId] = useState<string>("demo");
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("company_engineer");
+  const [isOwner, setIsOwner] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initial state setup
+    setMounted(true);
     setTenantId(getTenant());
     setUserEmail(getUserEmail());
+    setUserRole(getUserRole());
+    setIsOwner(isPlatformOwner());
+    setUserName(getUserName());
 
     // Listen to auth & tenant updates
     const handleTenantChange = (e: CustomEvent) => {
       if (e.detail?.tenantId) setTenantId(e.detail.tenantId);
+      if (e.detail?.role) setUserRole(e.detail.role);
       setUserEmail(e.detail?.email !== undefined ? e.detail.email : getUserEmail());
+      setIsOwner(isPlatformOwner());
+      setUserName(getUserName());
     };
 
     window.addEventListener("fg-tenant-change", handleTenantChange as EventListener);
     return () => window.removeEventListener("fg-tenant-change", handleTenantChange as EventListener);
   }, []);
+
+  const navLinks = mounted && isOwner 
+    ? [{ label: "Master Control", href: "/admin" }, ...BASE_LINKS]
+    : BASE_LINKS;
 
   // Switch to a dark-tinted bar while it sits over a dark section (anything marked data-nav-tone="dark").
   useEffect(() => {
@@ -83,9 +98,9 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
     <>
       <header ref={ref} data-tone="light" className={cn("glass fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between rounded-none border-x-0 border-t-0 px-6 text-[12.5px] text-ink md:px-10", className)}>
         <Wordmark />
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
-          {LINKS.map((l) => (
-            <Link key={l.label} href={l.href} className={cn("transition-colors hover:text-forest", path === l.href ? "text-forest" : "text-ink/70")}>
+        <nav className="hidden items-center gap-7 md:flex" aria-label="Primary">
+          {navLinks.map((l) => (
+            <Link key={l.label} href={l.href} className={cn("transition-colors hover:text-forest", path === l.href ? "text-forest font-medium" : "text-ink/70")}>
               {l.label}
             </Link>
           ))}
@@ -98,14 +113,24 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
             onClick={() => setIsAuthOpen(true)}
             className="flex items-center gap-1.5 rounded-lg border border-ink/15 bg-surface/30 px-3 py-1.5 text-xs text-ink/80 transition-all hover:border-forest/50 hover:bg-forest/10 hover:text-forest"
           >
-            {userEmail ? (
-              <>
-                <Building className="h-3.5 w-3.5 text-forest" />
-                <span className="font-semibold">{tenantInfo.name}</span>
-                <span className="hidden rounded bg-forest/20 px-1 py-0.2 text-[10px] text-forest sm:inline">
-                  {tenantId}
-                </span>
-              </>
+            {mounted && userEmail ? (
+              isOwner ? (
+                <>
+                  <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="font-semibold text-amber-400">{userName || "CodeX Admin"}</span>
+                  <span className="hidden rounded bg-amber-500/25 px-1.5 py-0.2 text-[10px] text-amber-300 font-mono sm:inline">
+                    SUPER-ADMIN
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Building className="h-3.5 w-3.5 text-forest" />
+                  <span className="font-semibold">{tenantInfo.name}</span>
+                  <span className="hidden rounded bg-forest/20 px-1 py-0.2 text-[10px] text-forest sm:inline">
+                    {tenantId}
+                  </span>
+                </>
+              )
             ) : (
               <>
                 <LogIn className="h-3.5 w-3.5 text-ink/60" />

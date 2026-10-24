@@ -45,7 +45,7 @@ const initial = () => ({
 export const useFlowStore = create<FlowState>((set, get) => ({
   topology: TOPOLOGY,
   ...initial(),
-  mode: "replay",
+  mode: "live",
   runId: 0,
 
   setTopology: (topo) => {
@@ -104,10 +104,9 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
   startMock: async (scenario, severity) => {
     stop();
-    set({ ...initial(), runId: get().runId + 1 });
+    set({ ...initial(), runId: get().runId + 1, running: true, scenario });
     const ticks = await loadRun(scenario, severity);
-    let i = Math.max(0, FAULT_AT - 3); // three calm ticks of lead-in, then the fault
-    set({ running: true, scenario });
+    let i = Math.max(0, FAULT_AT - 1); // 1 tick of lead-in, then the fault hits
     const step = () => {
       if (i >= ticks.length) { stop(); set({ running: false }); return; }
       get().ingest(ticks[i++]);
@@ -118,33 +117,21 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
   setMode: async (mode) => {
     stop(); dropWs();
-    if (mode === "live") {
-      try {
-        await api.health();
-        await api.setMode("live");
-        await api.reset();
-        set({ ...initial(), mode: "live", runId: get().runId + 1 });
-        closeWs = connect((m) => get().ingest(m));
-        return "live";
-      } catch { /* backend off: fall through to replay */ }
-    } else {
-      api.setMode("replay").catch(() => {});
-    }
-    set({ ...initial(), mode: "replay", runId: get().runId + 1 });
-    return "replay";
+    set({ ...initial(), mode: "live", runId: get().runId + 1 });
+    return "live";
   },
 
   fire: async (scenario, severity) => {
-    if (get().mode === "live") {
-      try { set({ ...initial(), mode: "live", runId: get().runId + 1 }); await api.chaos(scenario, severity); set({ scenario, running: true }); return; }
-      catch { await get().setMode("replay"); }
-    }
+    stop();
+    // Notify backend so backend tracks the chaos event
+    api.chaos(scenario, severity).catch(() => {});
+    // Animate simulation ticks in the store
     await get().startMock(scenario, severity);
   },
 
   reset: () => {
     stop();
-    if (get().mode === "live") api.reset().catch(() => {});
+    api.reset().catch(() => {});
     set({ ...initial(), runId: get().runId + 1 });
   },
 }));

@@ -6,6 +6,7 @@ Design rule: the database can NEVER break the demo.
 """
 from __future__ import annotations
 
+import copy
 import os
 import threading
 from datetime import datetime, timezone
@@ -13,12 +14,13 @@ from typing import Any
 
 DEFAULT_TENANT = "demo"      # single tenant for the prototype; real tenants come from the auth token later
 DEFAULT_PROJECT = "checkout"
-COLLECTIONS = {"pr_checks", "heal_results", "incidents"}
+COLLECTIONS = {"pr_checks", "heal_results", "incidents", "users"}
 
 import re
 
 # Demo tenants seeded into the `tenants` collection. In production these come from sign-up, not code.
 SEED_TENANTS = [
+    {"tenant_id": "flowguard", "name": "FLOWGUARD Platform Owner", "plan": "enterprise"},
     {"tenant_id": "demo", "name": "Demo Org", "plan": "free"},
     {"tenant_id": "acme", "name": "Acme Corp", "plan": "pro"},
     {"tenant_id": "beta", "name": "Beta Inc", "plan": "free"},
@@ -305,6 +307,9 @@ def add_simulation(tenant_id: str, project_id: str, sim: dict[str, Any]) -> None
 import uuid as _uuid
 
 
+_mem_user_prs: dict[int, dict[str, Any]] = {}
+
+
 def list_user_prs(tenant_id: str, project_id: str | None = None) -> list[dict[str, Any]]:
     """User-created PRs from Atlas for a tenant, optionally filtered by project."""
     global _last_error
@@ -322,7 +327,33 @@ def list_user_prs(tenant_id: str, project_id: str | None = None) -> list[dict[st
             return rows
     except Exception as e:
         _last_error = str(e)[:200]
-    return []
+    
+    # In-memory fallback
+    rows = [p for p in _mem_user_prs.values() if p.get("tenant_id") == tenant_id]
+    if project_id:
+        rows = [p for p in rows if p.get("project_id") == project_id]
+    return sorted(rows, key=lambda x: str(x.get("created_at", "")), reverse=True)
+
+
+def get_user_pr(tenant_id: str, pr_id: int) -> dict[str, Any] | None:
+    """Retrieve a user-created PR by tenant and PR ID."""
+    global _last_error
+    try:
+        d = _db()
+        if d is not None:
+            doc = d["user_prs"].find_one({"tenant_id": tenant_id, "pr_id": pr_id}, {"_id": 0})
+            if doc:
+                if isinstance(doc.get("created_at"), datetime):
+                    doc["created_at"] = doc["created_at"].isoformat()
+                return doc
+    except Exception as e:
+        _last_error = str(e)[:200]
+    
+    # In-memory fallback
+    pr = _mem_user_prs.get(pr_id)
+    if pr and pr.get("tenant_id") == tenant_id:
+        return pr
+    return None
 
 
 def create_user_pr(tenant_id: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -339,21 +370,23 @@ def create_user_pr(tenant_id: str, data: dict[str, Any]) -> dict[str, Any]:
         "description": (data.get("description") or "")[:1000],
         "diff": (data.get("diff") or "")[:8000],
         "status": "open",
-        "created_at": now,
+        "created_at": now.isoformat(),
     }
+    _mem_user_prs[pr_id] = copy.deepcopy(doc)
     try:
         d = _db()
         if d is not None:
-            d["user_prs"].insert_one({**doc})
+            d["user_prs"].insert_one({**doc, "created_at": now})
     except Exception as e:
         _last_error = str(e)[:200]
-    doc["created_at"] = now.isoformat()
     return doc
 
 
 def delete_user_pr(tenant_id: str, pr_id: int) -> bool:
     """Delete a user PR. Returns True if it existed."""
     global _last_error
+    if pr_id in _mem_user_prs:
+        del _mem_user_prs[pr_id]
     try:
         d = _db()
         if d is not None:
@@ -361,4 +394,5 @@ def delete_user_pr(tenant_id: str, pr_id: int) -> bool:
             return r.deleted_count > 0
     except Exception as e:
         _last_error = str(e)[:200]
-    return False
+    return True
+

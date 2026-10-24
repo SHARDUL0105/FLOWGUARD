@@ -46,12 +46,55 @@ export default function IncidentCommander() {
 
   const text = useMemo(() => brief?.text ?? "", [brief]);
   const { shown, done } = useStreamedText(text, 90);
+  const downloadReport = () => {
+    if (!text) return;
+    const content = `# FLOWGUARD Incident Post-Mortem Report
+Generated: ${new Date().toUTCString()}
+Scenario: ${scenario || "Microservice Cascade"}
+Target Cluster: Checkout Core
+Root Cause: ${a?.root_cause[0]?.node?.toUpperCase() || "UNKNOWN"} (${Math.round((a?.root_cause[0]?.confidence || 0.9) * 100)}% confidence)
+Blast Radius: ${a?.blast_radius.total || 5} services
+
+---
+
+${text}
+
+---
+Generated automatically by FLOWGUARD Incident Commander Engine.
+`;
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `FLOWGUARD-PostMortem-${scenario || "incident"}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const badge = brief ? ({ llm: "LLM", template: "template", fixture: "fixture" } as Record<string, string>)[brief.source] ?? brief.source : undefined;
+
   return (
     <Block title="Incident commander" aside={badge}>
-      {!a ? <p className="text-[12.5px] text-mute">A written brief appears here when something breaks.</p>
-        : !text ? <p className="text-[12.5px] text-mute caret">Writing the brief</p>
-        : <div className={`text-[12.5px] leading-relaxed text-ink/85 ${done ? "" : "caret"}`}>{render(shown)}</div>}
+      {!a ? (
+        <p className="text-[12.5px] text-mute">A written brief appears here when something breaks.</p>
+      ) : !text ? (
+        <p className="text-[12.5px] text-mute caret">Writing the brief</p>
+      ) : (
+        <div className="space-y-3">
+          <div className={`text-[12.5px] leading-relaxed text-ink/85 ${done ? "" : "caret"}`}>{render(shown)}</div>
+          {done && (
+            <div className="pt-2 border-t border-rule/50">
+              <button
+                onClick={downloadReport}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-forest/30 bg-forest/10 px-2.5 py-1 text-[11px] font-semibold text-forest hover:bg-forest/20 transition-all"
+              >
+                <span>↓ Export Post-Mortem (.md)</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </Block>
   );
 }

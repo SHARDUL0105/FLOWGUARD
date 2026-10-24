@@ -13,6 +13,7 @@ import type { Source } from "@/lib/api";
 import { SERVICE_LABEL } from "@/lib/mock";
 import type { AnalyzeResponse, HealResponse, PRListItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Activity, Terminal, CheckCircle2, AlertOctagon } from "lucide-react";
 
 const SC_LABEL = { db_latency: "Database latency", service_down: "Service down", traffic_spike: "Traffic spike" } as const;
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -55,7 +56,15 @@ export default function PRReport({ params }: { params: { id: string } }) {
             <div className="num text-[12px] text-mute">PR #{id}{meta ? `, ${meta.author}` : ""}</div>
             <h1 className="mt-1 text-[clamp(30px,4.5vw,52px)] font-light leading-tight tracking-tight">{meta?.title ?? `Pull request #${id}`}</h1>
           </div>
-          <span className="text-[11.5px] text-mute">{a ? (src === "live" ? "Computed by the engine just now" : "Recorded engine output (backend offline)") : ""}</span>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/command-center"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-forest/40 bg-forest/10 px-3.5 py-2 text-xs font-semibold text-forest hover:bg-forest/20 transition-all shadow-sm"
+            >
+              <Activity className="h-3.5 w-3.5 text-forest" />
+              <span>Simulate in Command Center →</span>
+            </Link>
+          </div>
         </div>
 
         {!a ? (
@@ -116,6 +125,36 @@ export default function PRReport({ params }: { params: { id: string } }) {
                 <section className="mt-10">
                   <h2 className="text-[13px] font-semibold">Comment posted to the pull request</h2>
                   <pre className="num glass mt-3 overflow-x-auto whitespace-pre-wrap rounded-xl p-5 text-[12px] leading-relaxed">{a.comment}</pre>
+                </section>
+
+                {/* CI/CD Pipeline Execution Box */}
+                <section className="mt-10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Terminal className="h-4 w-4 text-forest" />
+                    <h2 className="text-[13px] font-semibold">CI/CD Pipeline Reliability Gate (Simulated GitHub Action)</h2>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#070b09] p-4 font-mono text-[11.5px] leading-relaxed text-paper/80 shadow-lg">
+                    <div className="flex items-center gap-1.5 pb-3 border-b border-white/10 text-[10px] text-mute">
+                      <div className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
+                      <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
+                      <div className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+                      <span className="ml-2">github-actions / resilience-gate (pull_request: #{id})</span>
+                    </div>
+                    <div className="pt-3 space-y-1">
+                      <p className="text-white/60">$ flowguard-ci check --pr {id} --fail-under 80</p>
+                      <p className="text-cyan-400">[INFO] Ingesting microservice topology & edge resilience policies...</p>
+                      <p className="text-cyan-400">[INFO] Executing headless chaos simulation across 3 failure scenarios...</p>
+                      <p className="text-white/70">   → db_latency (3.0x): {a.per_scenario.find(s => s.scenario === "db_latency")?.pr.p95_ms ?? 628} ms</p>
+                      <p className="text-white/70">   → service_down: {a.per_scenario.find(s => s.scenario === "service_down")?.pr.p95_ms ?? 369} ms</p>
+                      <p className="text-white/70">   → traffic_spike (2.0x): {a.per_scenario.find(s => s.scenario === "traffic_spike")?.pr.p95_ms ?? 2018} ms</p>
+                      <p className={risky ? "text-red-400 font-bold" : "text-emerald-400 font-bold"}>
+                        {risky ? `[FAIL] Resilience score dropped to ${a.score_pr}/100 (Threshold: 80/100). Blocking merge.` : `[PASS] Resilience score ${a.score_pr}/100 meets threshold.`}
+                      </p>
+                      {risky && (
+                        <p className="text-amber-400">[AUTO-FIX] Verified Auto-Fix patch available below.</p>
+                      )}
+                    </div>
+                  </div>
                 </section>
 
                 <section className="mt-12 border-t border-rule pt-8">

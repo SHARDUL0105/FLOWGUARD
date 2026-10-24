@@ -1,7 +1,7 @@
 // Typed REST wrappers. Every call falls back to recorded fixtures (public/fixtures) when the backend is unreachable.
 import type { AnalyzeResponse, HealResponse, Mode, PRListItem, ScenarioId, WhatIfResponse } from "./types";
 import { WHATIF } from "./fixtures";
-import { getTenant } from "./tenant";
+import { getTenant, getAuthToken } from "./tenant";
 
 export const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -11,8 +11,27 @@ async function withTimeout(input: string, init: RequestInit = {}, ms = 4000): Pr
   try { return await fetch(input, { ...init, signal: ctl.signal }); } finally { clearTimeout(id); }
 }
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await withTimeout(BASE + path, { headers: { "Content-Type": "application/json", "X-Tenant-ID": getTenant(), ...(init?.headers ?? {}) }, ...init });
-  if (!r.ok) throw new Error(`${path} -> ${r.status}`);
+  const token = typeof window !== "undefined" ? getAuthToken() : null;
+  const reqHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Tenant-ID": getTenant(),
+  };
+  if (token) reqHeaders["Authorization"] = `Bearer ${token}`;
+  if (init?.headers) {
+    Object.assign(reqHeaders, init.headers);
+  }
+  const r = await withTimeout(BASE + path, {
+    ...init,
+    headers: reqHeaders,
+  });
+  if (!r.ok) {
+    let errDetail = "";
+    try {
+      const j = await r.json();
+      errDetail = j.detail || "";
+    } catch {}
+    throw new Error(errDetail || `${path} -> ${r.status}`);
+  }
   return r.json();
 }
 async function fixture<T>(name: string): Promise<T> {
@@ -103,5 +122,19 @@ export const api = {
   },
   async simulateProject(projectId: string): Promise<Record<string, any>> {
     return await req(`/api/projects/${projectId}/simulate`, { method: "POST" });
+  },
+
+  /** Authentication & Security APIs */
+  async login(credentials: { username_or_email: string; password: string; tenant_id?: string }): Promise<{ ok: boolean; token: string; user: any; message: string }> {
+    return await req("/api/auth/login", { method: "POST", body: JSON.stringify(credentials) });
+  },
+  async register(data: { username: string; email: string; password: string; tenant_id: string; role?: string; name?: string; title?: string }): Promise<{ ok: boolean; token: string; user: any; message: string }> {
+    return await req("/api/auth/register", { method: "POST", body: JSON.stringify(data) });
+  },
+  async superAdmins(): Promise<{ team: string; super_admins: any[] }> {
+    return await req("/api/auth/super-admins");
+  },
+  async getTenantUsers(): Promise<any[]> {
+    return await req("/api/auth/users");
   },
 };
