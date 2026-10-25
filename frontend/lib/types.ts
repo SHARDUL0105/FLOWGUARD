@@ -21,6 +21,19 @@ export interface Analysis { root_cause: RootCauseCandidate[]; propagation_path: 
 export interface TickMessage {
   type: "tick"; t: number; mode: Mode; scenario: ScenarioId | null; severity: number;
   nodes: Record<string, NodeMetrics>; checkout: CheckoutMetrics; events: FlowEvent[]; analysis: Analysis | null;
+  resilience_score?: number;
+  resilience_details?: Record<string, ResilienceDetail>;
+}
+
+export interface ResilienceDetail {
+  utilization: number;
+  success_rate: number;
+  error_rate: number;
+  p95_ms: number;
+  base_p95_ms: number;
+  error_penalty: number;
+  latency_penalty: number;
+  combined_penalty: number;
 }
 
 export interface WhatIfResponse {

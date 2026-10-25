@@ -105,6 +105,24 @@ def load_replay_fixture(scenario: str):
 def topology(): return topology_json()
 @public_router.get('/health')
 def health(): return {"ok":True,"mode":state.mode}
+
+@router.get('/resilience/score')
+def get_resilience_score():
+    """Get the current real-time resilience score from the live simulation."""
+    if state.mode != "live":
+        return {"score": None, "details": None, "message": "Not in live mode"}
+    if state.sim is None:
+        return {"score": None, "details": None, "message": "Simulation not initialized"}
+    
+    info = state.sim.get_detailed_resilience_info()
+    return {
+        "score": info["score"],
+        "details": info["per_service"],
+        "timestamp": info["timestamp"],
+        "scenario": info["scenario"],
+        "severity": info["severity"],
+    }
+
 @router.post('/chaos')
 async def chaos(body: ChaosRequest):
     state.configure_fault(body.scenario,body.severity)
@@ -640,7 +658,7 @@ def revoke_admin_access(tenant_id: str = Depends(current_tenant)):
         del _active_grants[tenant_id]
     return {"ok": True, "message": "Super-admin access revoked."}
 
-@router.get("/auth/check-admin-grant/{target_tenant_id}")
+@public_router.get("/auth/check-admin-grant/{target_tenant_id}")
 def check_admin_grant(target_tenant_id: str):
     """Super-admin checks if they have a valid temporary grant for a tenant."""
     grant_exp = _active_grants.get(target_tenant_id)
@@ -652,7 +670,7 @@ def check_admin_grant(target_tenant_id: str):
         del _active_grants[target_tenant_id]
     return {"granted": False}
 
-@router.get("/auth/active-grants")
+@public_router.get("/auth/active-grants")
 def list_active_grants():
     """Super-admin views all active temporary grants."""
     now = int(time.time())

@@ -18,6 +18,36 @@ python -m uvicorn backend.app.main:app --reload --port 8000
 Frontend only: `cd frontend && npm install && npm run dev`
 Tests: `python -m pytest backend -q`   |   Re-record replay fixtures: `python scripts/record_fixtures.py`
 
+### Docker (Production-like)
+```bash
+# One-time setup
+cp .env.example .env     # edit secrets if needed
+
+# Build and start all services (API, Frontend, Audit Log, Redis)
+docker compose -f docker-compose.audit.yml up --build -d
+
+# Verify
+docker compose -f docker-compose.audit.yml ps
+
+# View logs
+docker compose -f docker-compose.audit.yml logs -f
+
+# Stop
+docker compose -f docker-compose.audit.yml down
+
+# Reset data (clean slate)
+docker compose -f docker-compose.audit.yml down -v
+```
+
+**Services:**
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:8000 |
+| API Docs | http://localhost:8000/docs |
+| Audit Log | http://localhost:8080 |
+| Redis | localhost:6379 |
+
 API docs: http://localhost:8000/docs  |  Health: http://localhost:8000/api/health
 
 ## Ownership

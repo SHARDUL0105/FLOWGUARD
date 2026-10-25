@@ -86,11 +86,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 
 app=FastAPI(title="FLOWGUARD API", version="0.1.0")
-<<<<<<< HEAD
+
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(public_router)
-=======
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -103,7 +103,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
->>>>>>> 779c3a3204c13dc7ad0ef09fd3d92a82dd8fb8aa
 app.include_router(router)
 app.include_router(websocket_router)
 
@@ -111,6 +110,11 @@ app.include_router(websocket_router)
 @app.websocket("/ws")
 async def root_websocket(ws: WebSocket):
     await websocket(ws)
+
+@app.get('/health')
+def health(): 
+    from .state import state
+    return {"ok": True, "mode": state.mode}
 
 @app.get('/')
 def root(): return {"name":"FLOWGUARD","status":"ok","docs":"/docs"}
