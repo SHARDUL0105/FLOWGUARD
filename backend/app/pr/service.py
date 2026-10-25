@@ -38,16 +38,10 @@ def analyze_pr(pr_id: int):
     return result
 
 
-def heal_pr(pr_id: int):
-    """Returns the HealResponse dict (Section 10) or None if the PR does not exist."""
-    pr = get_pr(pr_id)
+def heal_pr(pr_id: int, tenant_id: str = "demo"):
+    """Returns the validated HealResponse dict (Phase 6 Auto-Fix Safety) or None if the PR does not exist."""
+    pr = get_pr(pr_id, tenant_id=tenant_id)
     if not pr:
         return None
-    current = get_pr_edges(pr_id)
-    findings = scan(base_edges=BASE_EDGES, pr_edges=current)
-    healed = heal_pr_edges(pr_edges=current, findings=findings)
-    g = run_gate(pr_edges=current, patched_edges=healed.edges, patch_diff=healed.patch_diff, pr_id=pr["id"])
-    return {"id": g["id"], "gate": g["gate"], "reason": g["reason"],
-            "score_before": g["score_before"], "score_after": g["score_after"],
-            "patch_diff": g["patch_diff"], "per_scenario_after": g["per_scenario_after"],
-            "verified_under": g["verified_under"]}
+    from ..security.revalidation import validate_autofix_workflow
+    return validate_autofix_workflow(pr_id=pr_id, tenant_id=tenant_id)

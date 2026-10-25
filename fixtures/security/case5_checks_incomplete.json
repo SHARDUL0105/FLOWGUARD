@@ -67,7 +67,7 @@
   "combined": {
     "pr_id": 23,
     "tenant_id": "demo",
-    "timestamp": "2026-10-25T03:51:46.937546+00:00",
+    "timestamp": "2026-10-25T04:09:42.454955+00:00",
     "combined_status": "BLOCKED_CHECKS_INCOMPLETE",
     "eligible_for_review": false,
     "automatic_merge_authorized": false,

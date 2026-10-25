@@ -85,18 +85,18 @@
     "comment": "### FLOWGUARD Resilience Check\n**Regression.** Resilience 84 -> 32\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 3000 ms / 92.9% |\n| Service down | 369 ms / 0.0% | 206 ms / 100.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: No effective timeout on order -> inventory; callers can hang until the gateway gives up.\nCascade: Database -> Inventory -> Order -> Gateway -> Frontend\n\nSuggested fix: restore timeout_ms 700, bound retries to 1, re-enable breaker and fallback."
   },
   "security": {
-    "scan_id": "sec-12-39b3a31e-1792900303",
+    "scan_id": "sec-12-39b3a31e-1792901378",
     "pr_id": 12,
     "tenant_id": "demo",
     "commit_or_patch_hash": "39b3a31e54631b6b8224c289b634335a966109bfa570dda1aa6aaeca73c368f2",
-    "timestamp": "2026-10-25T03:51:43.920757+00:00",
+    "timestamp": "2026-10-25T04:09:38.358210+00:00",
     "policy_version": "1.1.0",
     "scanners": [
       {
         "scanner": "flowguard-secrets",
         "status": "completed",
         "version": null,
-        "duration_ms": 0.06,
+        "duration_ms": 0.04,
         "findings_count": 0,
         "error_message": null
       },
@@ -104,7 +104,7 @@
         "scanner": "bandit",
         "status": "completed",
         "version": null,
-        "duration_ms": 1380.21,
+        "duration_ms": 1661.31,
         "findings_count": 0,
         "error_message": null
       },
@@ -112,7 +112,7 @@
         "scanner": "gitleaks",
         "status": "unavailable",
         "version": null,
-        "duration_ms": 17.58,
+        "duration_ms": 10.61,
         "findings_count": 0,
         "error_message": "Executable 'gitleaks' not found on system PATH."
       },
@@ -120,7 +120,7 @@
         "scanner": "semgrep",
         "status": "unavailable",
         "version": null,
-        "duration_ms": 16.78,
+        "duration_ms": 12.19,
         "findings_count": 0,
         "error_message": "Executable 'semgrep' not found on system PATH."
       }
@@ -155,7 +155,7 @@
   "combined": {
     "pr_id": 12,
     "tenant_id": "demo",
-    "timestamp": "2026-10-25T03:51:45.338760+00:00",
+    "timestamp": "2026-10-25T04:09:40.044555+00:00",
     "combined_status": "BLOCKED_RELIABILITY",
     "eligible_for_review": false,
     "automatic_merge_authorized": false,
@@ -249,18 +249,18 @@
       "secrets_count": 0,
       "policy_verdict": "PASS",
       "report": {
-        "scan_id": "sec-12-39b3a31e-1792900303",
+        "scan_id": "sec-12-39b3a31e-1792901378",
         "pr_id": 12,
         "tenant_id": "demo",
         "commit_or_patch_hash": "39b3a31e54631b6b8224c289b634335a966109bfa570dda1aa6aaeca73c368f2",
-        "timestamp": "2026-10-25T03:51:43.920757+00:00",
+        "timestamp": "2026-10-25T04:09:38.358210+00:00",
         "policy_version": "1.1.0",
         "scanners": [
           {
             "scanner": "flowguard-secrets",
             "status": "completed",
             "version": null,
-            "duration_ms": 0.06,
+            "duration_ms": 0.04,
             "findings_count": 0,
             "error_message": null
           },
@@ -268,7 +268,7 @@
             "scanner": "bandit",
             "status": "completed",
             "version": null,
-            "duration_ms": 1380.21,
+            "duration_ms": 1661.31,
             "findings_count": 0,
             "error_message": null
           },
@@ -276,7 +276,7 @@
             "scanner": "gitleaks",
             "status": "unavailable",
             "version": null,
-            "duration_ms": 17.58,
+            "duration_ms": 10.61,
             "findings_count": 0,
             "error_message": "Executable 'gitleaks' not found on system PATH."
           },
@@ -284,7 +284,7 @@
             "scanner": "semgrep",
             "status": "unavailable",
             "version": null,
-            "duration_ms": 16.78,
+            "duration_ms": 12.19,
             "findings_count": 0,
             "error_message": "Executable 'semgrep' not found on system PATH."
           }

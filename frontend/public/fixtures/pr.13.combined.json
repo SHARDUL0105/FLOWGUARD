@@ -1,7 +1,7 @@
 {
   "pr_id": 13,
   "tenant_id": "demo",
-  "timestamp": "2026-10-25T03:51:41.792982+00:00",
+  "timestamp": "2026-10-25T04:09:36.645154+00:00",
   "combined_status": "ELIGIBLE_FOR_REVIEW",
   "eligible_for_review": true,
   "automatic_merge_authorized": false,
@@ -67,18 +67,18 @@
     "secrets_count": 0,
     "policy_verdict": "PASS",
     "report": {
-      "scan_id": "sec-13-59d41938-1792900299",
+      "scan_id": "sec-13-59d41938-1792901375",
       "pr_id": 13,
       "tenant_id": "demo",
       "commit_or_patch_hash": "59d419388a801f53c73facbc6b2354c57d5127a6e9ca27e840d99a9cafe324d5",
-      "timestamp": "2026-10-25T03:51:39.367110+00:00",
+      "timestamp": "2026-10-25T04:09:35.217263+00:00",
       "policy_version": "1.1.0",
       "scanners": [
         {
           "scanner": "flowguard-secrets",
           "status": "completed",
           "version": null,
-          "duration_ms": 0.65,
+          "duration_ms": 0.06,
           "findings_count": 0,
           "error_message": null
         },
@@ -86,7 +86,7 @@
           "scanner": "bandit",
           "status": "completed",
           "version": null,
-          "duration_ms": 2350.84,
+          "duration_ms": 1388.45,
           "findings_count": 0,
           "error_message": null
         },
@@ -94,7 +94,7 @@
           "scanner": "gitleaks",
           "status": "unavailable",
           "version": null,
-          "duration_ms": 30.61,
+          "duration_ms": 17.63,
           "findings_count": 0,
           "error_message": "Executable 'gitleaks' not found on system PATH."
         },
@@ -102,7 +102,7 @@
           "scanner": "semgrep",
           "status": "unavailable",
           "version": null,
-          "duration_ms": 37.56,
+          "duration_ms": 18.31,
           "findings_count": 0,
           "error_message": "Executable 'semgrep' not found on system PATH."
         }

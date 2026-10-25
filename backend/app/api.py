@@ -3,7 +3,8 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
+from typing import Any, Dict
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from .schemas import ChaosRequest, DemoModeRequest, WhatIfRequest
 from .state import state
@@ -104,10 +105,89 @@ def analyze(pr_id: int, tenant_id: str = Depends(current_tenant)):
 
 @router.post('/pr/{pr_id}/heal')
 def heal(pr_id: int, tenant_id: str = Depends(current_tenant)):
-    r = heal_pr(pr_id)
+    r = heal_pr(pr_id, tenant_id=tenant_id)
     if r is None: raise HTTPException(404, f'Pull request #{pr_id} not found')
     db.save('heal_results', r, tenant_id)
     return r
+
+@router.post('/pr/{pr_id}/revalidate')
+def revalidate_patch_endpoint(pr_id: int, payload: Dict[str, Any] = Body(default={}), tenant_id: str = Depends(current_tenant)):
+    """Revalidate an explicit patch diff against the PR's original security baseline."""
+    from .security.revalidation import revalidate_security_patch
+    from .security.orchestrator import scan_pr_security
+    orig_sec = scan_pr_security(pr_id, tenant_id=tenant_id)
+    patched_diff = payload.get("patch_diff", "")
+    is_verified, report, summary = revalidate_security_patch(
+        original_report=orig_sec,
+        patched_diff=patched_diff,
+        pr_id=pr_id,
+        tenant_id=tenant_id,
+    )
+    return {
+        "pr_id": pr_id,
+        "is_verified": is_verified,
+        "summary": summary,
+        "revalidated_report": report.model_dump(),
+    }
+
+@router.post('/pr/{pr_id}/review/approve')
+def approve_pr_review(pr_id: int, payload: Dict[str, Any] = Body(default={}), tenant_id: str = Depends(current_tenant)):
+    """Record explicit human reviewer approval on a verified PR revision."""
+    from .security.combined import verify_pr_combined
+    from .security.revalidation import record_reviewer_approval
+
+    combined = verify_pr_combined(pr_id, tenant_id=tenant_id)
+    if combined.combined_status != "ELIGIBLE_FOR_REVIEW":
+        raise HTTPException(
+            400,
+            f"PR #{pr_id} cannot be approved for merge. Combined gate status is '{combined.combined_status}'. "
+            "Both reliability and security must be PASS (ELIGIBLE_FOR_REVIEW) before approval.",
+        )
+
+    reviewer_name = payload.get("reviewer", "lead-reviewer")
+    role = payload.get("role", "reviewer")
+    comments = payload.get("comments", "Reviewer sign-off granted after verified reliability and security checks.")
+    revision_id = payload.get("revision_id", f"rev-{pr_id}-verified")
+
+    approval = record_reviewer_approval(
+        pr_id=pr_id,
+        revision_id=revision_id,
+        reviewer_name=reviewer_name,
+        role=role,
+        tenant_id=tenant_id,
+        comments=comments,
+    )
+    return approval
+
+@router.get('/pr/{pr_id}/review/status')
+def get_review_status(pr_id: int, tenant_id: str = Depends(current_tenant)):
+    """Check current reviewer approval status and merge eligibility."""
+    from .security.combined import verify_pr_combined
+    from .security.revalidation import get_reviewer_approval
+
+    approval = get_reviewer_approval(pr_id, tenant_id=tenant_id)
+    combined = verify_pr_combined(pr_id, tenant_id=tenant_id)
+    return {
+        "pr_id": pr_id,
+        "tenant_id": tenant_id,
+        "combined_status": combined.combined_status,
+        "eligible_for_review": combined.eligible_for_review,
+        "review_signoff_required": True,
+        "has_reviewer_approval": approval is not None,
+        "approval_details": approval,
+        "simulated_merge_ready": (combined.combined_status == "ELIGIBLE_FOR_REVIEW" and approval is not None),
+    }
+
+@router.post('/pr/{pr_id}/merge')
+def simulated_merge(pr_id: int, payload: Dict[str, Any] = Body(default={}), tenant_id: str = Depends(current_tenant)):
+    """Execute simulated merge with explicit reviewer approval and ELIGIBLE_FOR_REVIEW verification."""
+    from .security.revalidation import execute_simulated_merge
+    actor = payload.get("actor", "repo-admin")
+    try:
+        res = execute_simulated_merge(pr_id, tenant_id=tenant_id, actor_name=actor)
+        return res
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 @router.post('/pr/{pr_id}/security/analyze')
 def analyze_security(pr_id: int, tenant_id: str = Depends(current_tenant)):
