@@ -658,7 +658,7 @@ def revoke_admin_access(tenant_id: str = Depends(current_tenant)):
         del _active_grants[tenant_id]
     return {"ok": True, "message": "Super-admin access revoked."}
 
-@router.get("/auth/check-admin-grant/{target_tenant_id}")
+@public_router.get("/auth/check-admin-grant/{target_tenant_id}")
 def check_admin_grant(target_tenant_id: str):
     """Super-admin checks if they have a valid temporary grant for a tenant."""
     grant_exp = _active_grants.get(target_tenant_id)
@@ -670,7 +670,7 @@ def check_admin_grant(target_tenant_id: str):
         del _active_grants[target_tenant_id]
     return {"granted": False}
 
-@router.get("/auth/active-grants")
+@public_router.get("/auth/active-grants")
 def list_active_grants():
     """Super-admin views all active temporary grants."""
     now = int(time.time())

@@ -24,23 +24,71 @@ cd "$ROOT"
 # imports modules using backend.app....
 export PYTHONPATH="$ROOT"
 
-python "$ROOT/scripts/record_fixtures.py"
+# Pre-generate fixtures if needed
+if [ ! -f "$ROOT/fixtures/topology.json" ]; then
+    echo "[*] Pre-generating simulation fixtures..."
+    python "$ROOT/scripts/record_fixtures.py"
+fi
 
-python -m uvicorn backend.app.main:app \
-    --host 0.0.0.0 \
-    --port 8000 &
-
-BACKEND_PID=$!
+# PIDs array for cleanup
+PIDS=()
 
 cleanup() {
-    kill "$BACKEND_PID" 2>/dev/null || true
+    echo "[*] Stopping all services..."
+    for pid in "${PIDS[@]}"; do
+        kill "$pid" 2>/dev/null || true
+    done
+    # Stop docker compose
+    docker-compose -f "$ROOT/docker-compose.audit.yml" down 2>/dev/null || true
+    echo "[+] FLOWGUARD stopped cleanly."
 }
 
 trap cleanup EXIT
 
-if [ -d "$ROOT/frontend" ] && [ -f "$ROOT/frontend/package.json" ]; then
-    cd "$ROOT/frontend"
-    npm run dev
-else
-    wait "$BACKEND_PID"
-fi
+# 1. Start Backend on port 8000
+echo "[*] Starting Backend on http://localhost:8000 (Swagger: http://localhost:8000/docs)"
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload &
+BACKEND_PID=$!
+PIDS+=($BACKEND_PID)
+
+sleep 2
+
+# 2. Start Frontend on port 3000 (App)
+echo "[*] Starting Frontend on http://localhost:3000"
+cd "$ROOT/frontend"
+npm run dev &
+FRONTEND_3000_PID=$!
+PIDS+=($FRONTEND_3000_PID)
+
+sleep 3
+
+# 3. Start Frontend on port 4000 (Admin) - uses dedicated dev:admin script
+echo "[*] Starting Frontend (Admin) on http://localhost:4000"
+npm run dev:admin &
+FRONTEND_4000_PID=$!
+PIDS+=($FRONTEND_4000_PID)
+
+sleep 1
+
+# 4. Start Docker Compose for Audit Log (Redis + Audit-Log + API + Frontend)
+echo "[*] Starting Docker Audit Stack (Redis, Audit-Log, API, Frontend)..."
+cd "$ROOT"
+docker-compose -f docker-compose.audit.yml up --build &
+DOCKER_PID=$!
+PIDS+=($DOCKER_PID)
+
+echo ""
+echo "=================================================="
+echo "  FLOWGUARD RUNNING"
+echo "=================================================="
+echo "  Backend API:      http://localhost:8000"
+echo "  Swagger Docs:     http://localhost:8000/docs"
+echo "  Frontend (App):   http://localhost:3000"
+echo "  Frontend (Admin): http://localhost:4000"
+echo "  Audit Log:        http://localhost:8080"
+echo "  Redis:            localhost:6379"
+echo "=================================================="
+echo "  Press Ctrl+C to stop all services"
+
+# Wait for all processes
+wait
