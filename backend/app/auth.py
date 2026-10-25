@@ -24,7 +24,26 @@ import time
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 
-SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "flowguard-hackathon-codeapex-2026-secret-seed-key")
+MIN_SECRET_KEY_BYTES = 32
+
+
+def _load_secret_key(configured_key: Optional[str], app_env: Optional[str]) -> str:
+    """Load the signing key, requiring a stable production key."""
+    is_production = (app_env or "").strip().lower() == "production"
+    if not configured_key or not configured_key.strip():
+        if is_production:
+            raise RuntimeError(
+                "AUTH_SECRET_KEY must be configured in production with at least 32 bytes."
+            )
+        return secrets.token_urlsafe(32)
+    if is_production and len(configured_key.encode("utf-8")) < MIN_SECRET_KEY_BYTES:
+        raise RuntimeError(
+            "AUTH_SECRET_KEY must contain at least 32 bytes in production."
+        )
+    return configured_key
+
+
+SECRET_KEY = _load_secret_key(os.getenv("AUTH_SECRET_KEY"), os.getenv("APP_ENV"))
 
 # The only 4 accounts authorized to have platform_owner (Super Admin) status:
 TEAM_CODEX_MEMBERS = [
@@ -157,6 +176,10 @@ def verify_password(password: str, password_hash: str, salt: str) -> bool:
 
 def create_token(user: Dict[str, Any], expires_in_seconds: int = 86400 * 7) -> str:
     """Generate a tamper-proof HMAC-SHA256 signed bearer token."""
+    if not SECRET_KEY:
+        raise RuntimeError("AUTH_SECRET_KEY must be configured before issuing tokens.")
+    if len(SECRET_KEY.encode("utf-8")) < MIN_SECRET_KEY_BYTES:
+        raise RuntimeError("AUTH_SECRET_KEY must contain at least 32 bytes.")
     header = {"alg": "HS256", "typ": "JWT"}
     payload = {
         "sub": user["id"],
@@ -179,8 +202,10 @@ def create_token(user: Dict[str, Any], expires_in_seconds: int = 86400 * 7) -> s
 
 
 def verify_token(token: str) -> Optional[Dict[str, Any]]:
-    """Verify bearer token signature and expiration."""
+    """Verify bearer token signature, JWT header, and required claims."""
     try:
+        if not SECRET_KEY or len(SECRET_KEY.encode("utf-8")) < MIN_SECRET_KEY_BYTES:
+            return None
         parts = token.split(".")
         if len(parts) != 3:
             return None
@@ -191,17 +216,43 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
         
         # Add back base64 padding
         pad = len(b64_sig) % 4
-        sig_bytes = base64.urlsafe_b64decode(b64_sig + ("=" * (4 - pad) if pad else ""))
-        
+        sig_bytes = base64.b64decode(
+            b64_sig + ("=" * (4 - pad) if pad else ""),
+            altchars=b"-_",
+            validate=True,
+        )
+
         if not hmac.compare_digest(expected_sig, sig_bytes):
             return None
         
+        pad_h = len(b64_header) % 4
+        header_bytes = base64.b64decode(
+            b64_header + ("=" * (4 - pad_h) if pad_h else ""),
+            altchars=b"-_",
+            validate=True,
+        )
+        header = json.loads(header_bytes.decode("utf-8"))
+        if not isinstance(header, dict) or header.get("alg") != "HS256" or header.get("typ") != "JWT":
+            return None
+
         pad_p = len(b64_payload) % 4
-        payload_bytes = base64.urlsafe_b64decode(b64_payload + ("=" * (4 - pad_p) if pad_p else ""))
+        payload_bytes = base64.b64decode(
+            b64_payload + ("=" * (4 - pad_p) if pad_p else ""),
+            altchars=b"-_",
+            validate=True,
+        )
         payload = json.loads(payload_bytes.decode("utf-8"))
-        
-        if payload.get("exp", 0) < int(time.time()):
+        if not isinstance(payload, dict):
+            return None
+        exp = payload.get("exp")
+        if isinstance(exp, bool) or not isinstance(exp, int) or exp <= int(time.time()):
             return None  # expired
+        required_string_claims = ("sub", "username", "email", "role", "tenant_id")
+        if any(not isinstance(payload.get(key), str) or not payload[key] for key in required_string_claims):
+            return None
+        iat = payload.get("iat")
+        if isinstance(iat, bool) or not isinstance(iat, int) or iat > int(time.time()):
+            return None
         
         return payload
     except Exception:
@@ -376,6 +427,8 @@ def register_user(
     if role == "platform_owner":
         if clean_email not in SUPER_ADMIN_EMAILS and clean_username not in SUPER_ADMIN_USERNAMES:
             raise ValueError("Forbidden: Super Admin access is restricted to verified Team CodeX members.")
+    if role != "company_engineer":
+        raise ValueError("Registration is limited to company_engineer accounts.")
             
     # Check for duplicate
     for u in _USERS_DB.values():
@@ -418,8 +471,20 @@ def list_users_for_tenant(tenant_id: str) -> List[Dict[str, Any]]:
     return out
 
 
+def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """Return a sanitized current user record for validating an issued token."""
+    for user in _USERS_DB.values():
+        if user["id"] == user_id:
+            clean = copy.deepcopy(user)
+            clean.pop("password_hash", None)
+            clean.pop("salt", None)
+            clean.pop("alt_passwords", None)
+            return clean
+    return None
+
+
 def get_hackathon_super_admins() -> List[Dict[str, Any]]:
-    """Return the official 4 Team CodeX Hackathon Super Admins."""
+    """Return public profiles of the official 4 Team CodeX Super Admins."""
     return [
         {
             "username": m["username"],
@@ -427,7 +492,6 @@ def get_hackathon_super_admins() -> List[Dict[str, Any]]:
             "email": m["email"],
             "role": m["role"],
             "title": m["title"],
-            "default_password_hint": m["default_passwords"][0],
         }
         for m in TEAM_CODEX_MEMBERS
     ]

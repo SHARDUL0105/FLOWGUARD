@@ -40,3 +40,18 @@ def test_known_tenants_accepted():
     assert db.resolve_tenant(None) == "demo"
     with pytest.raises(ValueError):
         db.resolve_tenant("nobody")
+
+
+def test_user_pr_delete_cannot_cross_tenants(monkeypatch):
+    pr_id = 52001
+    monkeypatch.setattr(
+        db,
+        "_mem_user_prs",
+        {pr_id: {"pr_id": pr_id, "tenant_id": "acme"}},
+    )
+    monkeypatch.setattr(db, "_db", lambda: None)
+
+    assert db.delete_user_pr("beta", pr_id) is False
+    assert pr_id in db._mem_user_prs
+    assert db.delete_user_pr("acme", pr_id) is True
+    assert pr_id not in db._mem_user_prs
