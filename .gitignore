@@ -13,3 +13,7 @@ node_modules/
 /PR_SEcurity_Layer_Rules_ForAgy.txt
 
 backend/venv/
+
+# Local Python virtual environments
+backend/.venv-new/
+backend/venv/

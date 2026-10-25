@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # Immutable Audit Log Service
+  audit-log:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.audit
+    container_name: flowguard-audit-log
+    volumes:
+      - audit-data:/var/lib/audit
+    environment:
+      - AUDIT_DB_PATH=/var/lib/audit/audit.db
+      - AUDIT_HMAC_KEY=${AUDIT_HMAC_KEY:-flowguard-audit-secret-change-in-prod}
+      - AUDIT_PORT=8080
+    ports:
+      - "8080:8080"
+    networks:
+      - flowguard-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for WebSocket connection tracking + rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: flowguard-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - flowguard-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Main API
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flowguard-api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - AUDIT_SERVICE_URL=http://audit-log:8080
+      - AUTH_SECRET_KEY=${AUTH_SECRET_KEY:-flowguard-hackathon-codeapex-2026-secret-seed-key}
+      - MONGODB_URI=${MONGODB_URI:-}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      audit-log:
+        condition: service_healthy
+    networks:
+      - flowguard-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: flowguard-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8000
+      - NEXT_PUBLIC_WS_URL=ws://api:8000
+    depends_on:
+      - api
+    networks:
+      - flowguard-network
+    restart: unless-stopped
+
+volumes:
+  audit-data:
+  redis-data:
+
+networks:
+  flowguard-network:
+    driver: bridge

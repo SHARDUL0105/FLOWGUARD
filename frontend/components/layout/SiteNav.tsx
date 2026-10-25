@@ -31,6 +31,8 @@ const BASE_LINKS = [
   { label: "Simulations", href: "/simulations" },
   { label: "Alerts", href: "/alerts" },
   { label: "Pull requests", href: "/pull-requests" },
+  { label: "Security Demo", href: "/security-demo" },
+  { label: "Docs", href: "/docs" },
 ];
 
 /** Fixed, frosted-glass bar that stays visible on every page. A spacer keeps in-flow pages from sliding under it;

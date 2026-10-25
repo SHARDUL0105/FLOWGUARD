@@ -105,6 +105,24 @@ def load_replay_fixture(scenario: str):
 def topology(): return topology_json()
 @public_router.get('/health')
 def health(): return {"ok":True,"mode":state.mode}
+
+@router.get('/resilience/score')
+def get_resilience_score():
+    """Get the current real-time resilience score from the live simulation."""
+    if state.mode != "live":
+        return {"score": None, "details": None, "message": "Not in live mode"}
+    if state.sim is None:
+        return {"score": None, "details": None, "message": "Simulation not initialized"}
+    
+    info = state.sim.get_detailed_resilience_info()
+    return {
+        "score": info["score"],
+        "details": info["per_service"],
+        "timestamp": info["timestamp"],
+        "scenario": info["scenario"],
+        "severity": info["severity"],
+    }
+
 @router.post('/chaos')
 async def chaos(body: ChaosRequest):
     state.configure_fault(body.scenario,body.severity)

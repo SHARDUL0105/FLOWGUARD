@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { api } from "@/lib/api";
 import { FAULT_AT, TOPOLOGY, healthySeed, loadRun } from "@/lib/mock";
 import { connect } from "@/lib/ws";
-import type { Analysis, CheckoutMetrics, FlowEvent, Mode, NodeMetrics, ScenarioId, TickMessage, Topology } from "@/lib/types";
+import type { Analysis, CheckoutMetrics, FlowEvent, Mode, NodeMetrics, ResilienceDetail, ScenarioId, TickMessage, Topology } from "@/lib/types";
 
 const HISTORY = 30;
 const MAX_EVENTS = 60;
@@ -26,6 +26,8 @@ interface FlowState {
   running: boolean;
   runId: number;
   activeProjectId?: string;
+  resilience_score?: number;
+  resilience_details?: Record<string, ResilienceDetail>;
   setTopology: (topology: Topology) => void;
   loadProjectTopology: (projectId: string) => Promise<void>;
   ingest: (m: TickMessage) => void;
@@ -40,6 +42,7 @@ const seed = healthySeed();
 const initial = () => ({
   nodes: seed.nodes, history: seed.history, checkout: seed.checkout,
   events: [] as FlowEvent[], analysis: null as Analysis | null, t: 0, scenario: null as ScenarioId | null, severity: 1, running: false,
+  resilience_score: undefined, resilience_details: undefined,
 });
 
 export const useFlowStore = create<FlowState>((set, get) => ({

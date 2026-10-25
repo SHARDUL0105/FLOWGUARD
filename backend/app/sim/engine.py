@@ -99,6 +99,99 @@ class Simulator:
                 results.append(result)
         return results
 
+    def get_current_resilience_score(self) -> int:
+        """
+        Compute a real-time resilience score from the current simulation state.
+        Returns a score 0-100 where higher is more resilient.
+        """
+        if self.t < 0:
+            # During warmup, return a baseline healthy score
+            return 85
+
+        # Compute penalties from current state
+        total_error_penalty = 0.0
+        total_latency_penalty = 0.0
+        service_count = 0
+        
+        for service in ORDER:
+            data = self.state.get(service, {})
+            if not data:
+                continue
+            
+            service_count += 1
+            rho = data.get("rho", 0)
+            succ = data.get("succ", 1.0)
+            resp = data.get("resp", SERVICES[service]["base"])
+            base_resp = SERVICES[service]["base"]
+            
+            # Error penalty: increases as success rate drops below 0.98
+            err_rate = 1 - succ
+            err_penalty = min(1.0, err_rate / 0.5)
+            
+            # Latency penalty: increases as response time exceeds baseline
+            latency_ratio = resp / base_resp if base_resp > 0 else 1.0
+            lat_penalty = min(1.0, max(0.0, latency_ratio - 1) / 3)
+            
+            # Weight by utilization - services under high load matter more
+            weight = max(0.5, min(1.5, rho / 0.5))
+            
+            total_error_penalty += err_penalty * weight
+            total_latency_penalty += lat_penalty * weight
+        
+        if service_count == 0:
+            return 85
+            
+        avg_error_penalty = total_error_penalty / service_count
+        avg_latency_penalty = total_latency_penalty / service_count
+        
+        # Combine with same weights as offline scoring (0.6 error, 0.4 latency)
+        combined_penalty = 0.6 * avg_error_penalty + 0.4 * avg_latency_penalty
+        
+        # Convert to 0-100 score
+        score = round(100 * (1 - combined_penalty))
+        return max(0, min(100, score))
+
+    def get_detailed_resilience_info(self) -> dict:
+        """
+        Get detailed breakdown of current resilience metrics.
+        """
+        score = self.get_current_resilience_score()
+        
+        per_service = {}
+        for service in ORDER:
+            data = self.state.get(service, {})
+            if not data:
+                continue
+            rho = data.get("rho", 0)
+            succ = data.get("succ", 1.0)
+            resp = data.get("resp", SERVICES[service]["base"])
+            base_resp = SERVICES[service]["base"]
+            
+            err_rate = 1 - succ
+            err_penalty = min(1.0, err_rate / 0.5)
+            latency_ratio = resp / base_resp if base_resp > 0 else 1.0
+            lat_penalty = min(1.0, max(0.0, latency_ratio - 1) / 3)
+            combined = 0.6 * err_penalty + 0.4 * lat_penalty
+            
+            per_service[service] = {
+                "utilization": round(rho, 2),
+                "success_rate": round(succ, 3),
+                "error_rate": round(err_rate, 3),
+                "p95_ms": round(1.5 * resp),
+                "base_p95_ms": round(1.5 * base_resp),
+                "error_penalty": round(err_penalty, 3),
+                "latency_penalty": round(lat_penalty, 3),
+                "combined_penalty": round(combined, 3),
+            }
+        
+        return {
+            "score": score,
+            "per_service": per_service,
+            "timestamp": self.t,
+            "scenario": self.scenario,
+            "severity": self.severity,
+        }
+
 
 def run(edges=BASE_EDGES, fault=None, ticks=60, fault_at=10, seed=7, severity=3.0, record=False):
     sim=Simulator(edges=edges, seed=seed, scenario=fault, severity=severity, fault_at=fault_at)

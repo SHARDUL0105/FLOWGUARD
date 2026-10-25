@@ -1,0 +1,19 @@
+# Frontend .dockerignore
+node_modules
+.next
+.git
+.gitignore
+README.md
+*.log
+npm-debug.log*
+.DS_Store
+*.pem
+.vercel
+.netlify
+.turbo
+dist
+build
+coverage
+.nyc_output
+*.tsbuildinfo
+*.tsbuildinfo

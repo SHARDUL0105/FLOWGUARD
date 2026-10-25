@@ -3,12 +3,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
-COPY backend/requirements-audit.txt /tmp/requirements-audit.txt
+COPY requirements-audit.txt /tmp/requirements-audit.txt
 RUN pip install --no-cache-dir -r /tmp/requirements-audit.txt
 
 # Copy audit server
-COPY backend/audit_server.py /app/audit_server.py
+COPY audit_server.py /app/audit_server.py
 
 # Create audit data directory
 RUN mkdir -p /var/lib/audit
