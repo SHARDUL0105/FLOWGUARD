@@ -15,6 +15,7 @@ from .models import (
     NormalizedFinding,
     PolicyEvaluationResult,
     ScannerExecutionMetadata,
+    SecurityPolicyConfig,
     SecurityScanReport,
 )
 from .policy import evaluate_security_policy
@@ -40,6 +41,10 @@ def scan_pr_security(
     repo_dir: Optional[str] = None,
     include_dependency_scans: bool = False,
     blocking_severities: Optional[Set[str]] = None,
+    policy_config: Optional[SecurityPolicyConfig] = None,
+    baseline_findings: Optional[List[NormalizedFinding]] = None,
+    security_tests_passed: Optional[bool] = None,
+    patch_validation_passed: Optional[bool] = None,
 ) -> SecurityScanReport:
     """Execute complete security scan orchestration for a pull request.
 
@@ -141,6 +146,10 @@ def scan_pr_security(
         findings=all_findings,
         scanners=scanners_meta,
         blocking_severities=blocking_severities,
+        config=policy_config,
+        security_tests_passed=security_tests_passed,
+        patch_validation_passed=patch_validation_passed,
+        baseline_findings=baseline_findings,
     )
 
     # 7. Redact any sensitive content across findings and snippets

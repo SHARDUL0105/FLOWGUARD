@@ -9,19 +9,22 @@ from .models import (
     NormalizedFinding,
     PolicyEvaluationResult,
     ScannerExecutionMetadata,
+    SecurityPolicyConfig,
     SecurityScanReport,
     SeverityLevel,
 )
 from .orchestrator import scan_pr_security
-from .policy import evaluate_security_policy
+from .policy import DeterministicPolicyEvaluator, evaluate_security_policy
 from .redactor import mask_secret, redact_text
 from .revalidation import revalidate_patch
 
 __all__ = [
+    "DeterministicPolicyEvaluator",
     "FindingCategory",
     "NormalizedFinding",
     "PolicyEvaluationResult",
     "ScannerExecutionMetadata",
+    "SecurityPolicyConfig",
     "SecurityScanReport",
     "SeverityLevel",
     "evaluate_security_policy",
