@@ -185,11 +185,6 @@ def get_pr(pr_id: Union[int, str], tenant_id: str = "demo") -> Optional[Dict[str
         except ValueError:
             return None
         upr = _db_module.get_user_pr(tenant_id, numeric_id)
-        if not upr:
-            for t in ["demo", "acme", "beta"]:
-                upr = _db_module.get_user_pr(t, numeric_id)
-                if upr:
-                    break
         if upr:
             return {
                 "id": upr.get("pr_id", numeric_id),
@@ -208,9 +203,9 @@ def get_pr(pr_id: Union[int, str], tenant_id: str = "demo") -> Optional[Dict[str
     return None
 
 
-def pr_diff(pr_id: Union[int, str]) -> str:
+def pr_diff(pr_id: Union[int, str], tenant_id: str = "demo") -> str:
     """Return unified diff string for the given PR."""
-    pr = get_pr(pr_id)
+    pr = get_pr(pr_id, tenant_id)
     if pr:
         return pr["diff"]
     return ""

@@ -385,14 +385,16 @@ def create_user_pr(tenant_id: str, data: dict[str, Any]) -> dict[str, Any]:
 def delete_user_pr(tenant_id: str, pr_id: int) -> bool:
     """Delete a user PR. Returns True if it existed."""
     global _last_error
-    if pr_id in _mem_user_prs:
+    memory_deleted = False
+    memory_pr = _mem_user_prs.get(pr_id)
+    if memory_pr and memory_pr.get("tenant_id") == tenant_id:
         del _mem_user_prs[pr_id]
+        memory_deleted = True
     try:
         d = _db()
         if d is not None:
             r = d["user_prs"].delete_one({"tenant_id": tenant_id, "pr_id": pr_id})
-            return r.deleted_count > 0
+            return r.deleted_count > 0 or memory_deleted
     except Exception as e:
         _last_error = str(e)[:200]
-    return True
-
+    return memory_deleted
