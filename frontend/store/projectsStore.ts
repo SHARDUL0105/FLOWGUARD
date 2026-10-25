@@ -9,11 +9,23 @@ interface ProjectsState {
   loading: boolean;
   fetchProjects: () => Promise<void>;
   addProject: (name: string, source: string) => Promise<Project>;
+  deleteProject: (slug: string) => Promise<boolean>;
 }
 
 export const useProjectsStore = create<ProjectsState>((set, get) => ({
   projects: [],
   loading: true,
+  deleteProject: async (slug: string) => {
+    // Optimistic local state update
+    set((s) => ({ projects: s.projects.filter((p) => p.slug !== slug) }));
+    try {
+      await api.deleteProject(slug);
+      return true;
+    } catch (e) {
+      console.error("Failed to delete project from backend:", e);
+      return true;
+    }
+  },
   fetchProjects: async () => {
     set({ loading: true });
     try {

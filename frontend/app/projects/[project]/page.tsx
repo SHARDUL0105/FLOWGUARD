@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import CustomTopologyPreview from "@/components/graph/CustomTopologyPreview";
 import MiniGraph from "@/components/graph/MiniGraph";
 import SiteNav from "@/components/layout/SiteNav";
@@ -9,13 +9,17 @@ import { Trend } from "@/components/projects/Trend";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { useProjectsStore } from "@/store/projectsStore";
+import DeleteProjectModal from "@/components/projects/DeleteProjectModal";
+import { Trash2 } from "lucide-react";
 
 export default function ProjectOverview() {
+  const router = useRouter();
   const { project } = useParams<{ project: string }>();
-  const { projects, loading, fetchProjects } = useProjectsStore();
+  const { projects, loading, fetchProjects, deleteProject } = useProjectsStore();
   const p = projects.find((x) => x.slug === project);
   const [customTopology, setCustomTopology] = useState<{ nodes: any[]; edges: any[] } | null>(null);
   const [topoLoading, setTopoLoading] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -35,6 +39,12 @@ export default function ProjectOverview() {
       .catch(() => setCustomTopology(null))
       .finally(() => setTopoLoading(false));
   }, [project]);
+
+  const handleDeleteConfirm = async () => {
+    if (!project) return;
+    await deleteProject(project);
+    router.push("/projects");
+  };
 
   if (loading && !p) {
     return (
@@ -66,10 +76,18 @@ export default function ProjectOverview() {
             <h1 className="text-[clamp(40px,6vw,84px)] font-light leading-none tracking-tight">{p.name}</h1>
             <p className="mt-3 text-[13px] text-mute">{p.env}, {p.source}</p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button href="/command-center">Open Command Center</Button>
             <Button href="/simulations" variant="outline">Run Simulation</Button>
             <Button href={`/projects/${project}/topology`} variant="outline">Edit Topology</Button>
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-[13px] font-medium text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Project
+            </button>
           </div>
         </div>
 
@@ -140,6 +158,15 @@ export default function ProjectOverview() {
           </section>
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteProjectModal
+        isOpen={isDeleteModalOpen}
+        projectName={p.name}
+        projectSlug={p.slug}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

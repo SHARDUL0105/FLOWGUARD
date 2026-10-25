@@ -286,6 +286,78 @@ def authenticate_user(
     return None
 
 
+# ─── Password + OTP Two-Factor Authentication Engine ────────────────────────
+
+_OTP_SESSIONS: Dict[str, Dict[str, Any]] = {}
+
+
+def mask_email(email: str) -> str:
+    """Mask email for privacy display (e.g., s***l@flowguard.io)."""
+    if "@" not in email:
+        return email
+    local, domain = email.split("@", 1)
+    if len(local) <= 2:
+        masked_local = local[0] + "*"
+    else:
+        masked_local = local[0] + ("*" * (len(local) - 2)) + local[-1]
+    return f"{masked_local}@{domain}"
+
+
+def create_otp_session(user: Dict[str, Any], expires_in_seconds: int = 300) -> tuple[str, str]:
+    """Generate a cryptographically secure 6-digit OTP code and session ID."""
+    session_id = secrets.token_hex(16)
+    # 6-digit numeric OTP code (100000 - 999999)
+    otp_code = str(secrets.randbelow(900000) + 100000)
+    
+    _OTP_SESSIONS[session_id] = {
+        "user": copy.deepcopy(user),
+        "otp": otp_code,
+        "expires_at": time.time() + expires_in_seconds,
+        "attempts": 0,
+    }
+    return session_id, otp_code
+
+
+def verify_otp(session_id: str, otp_code: str) -> Optional[Dict[str, Any]]:
+    """Validate 6-digit OTP against session. Returns user dict on match, None otherwise."""
+    session = _OTP_SESSIONS.get(session_id)
+    if not session:
+        return None
+        
+    if time.time() > session["expires_at"]:
+        del _OTP_SESSIONS[session_id]
+        return None
+        
+    session["attempts"] += 1
+    if session["attempts"] > 5:
+        del _OTP_SESSIONS[session_id]
+        return None
+        
+    # Constant-time comparison
+    if hmac.compare_digest(session["otp"].strip(), otp_code.strip()):
+        user = session["user"]
+        del _OTP_SESSIONS[session_id]
+        user_key = user["email"].lower()
+        if user_key in _USERS_DB:
+            _USERS_DB[user_key]["last_login"] = datetime.now(timezone.utc).isoformat()
+        return copy.deepcopy(user)
+        
+    return None
+
+
+def resend_otp(session_id: str, expires_in_seconds: int = 300) -> Optional[tuple[str, str]]:
+    """Regenerate a new 6-digit OTP for an existing session."""
+    session = _OTP_SESSIONS.get(session_id)
+    if not session:
+        return None
+        
+    new_otp = str(secrets.randbelow(900000) + 100000)
+    session["otp"] = new_otp
+    session["expires_at"] = time.time() + expires_in_seconds
+    session["attempts"] = 0
+    return session_id, new_otp
+
+
 def register_user(
     username: str,
     email: str,

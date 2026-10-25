@@ -99,11 +99,17 @@ export const api = {
   },
 
   /** Project CRUD endpoints backed by MongoDB Atlas */
-  async listProjects(): Promise<Record<string, any>[]> {
-    try { return await req("/api/projects"); } catch { return []; }
+  async listProjects(overrideTenant?: string): Promise<Record<string, any>[]> {
+    try {
+      const headers = overrideTenant ? { "X-Tenant-ID": overrideTenant } : undefined;
+      return await req("/api/projects", { headers });
+    } catch { return []; }
   },
-  async getProject(id: string): Promise<Record<string, any> | null> {
-    try { return await req(`/api/projects/${id}`); } catch { return null; }
+  async getProject(id: string, overrideTenant?: string): Promise<Record<string, any> | null> {
+    try {
+      const headers = overrideTenant ? { "X-Tenant-ID": overrideTenant } : undefined;
+      return await req(`/api/projects/${id}`, { headers });
+    } catch { return null; }
   },
   async createProject(data: Record<string, any>): Promise<Record<string, any>> {
     return await req("/api/projects", { method: "POST", body: JSON.stringify(data) });
@@ -136,5 +142,19 @@ export const api = {
   },
   async getTenantUsers(): Promise<any[]> {
     return await req("/api/auth/users");
+  },
+
+  /** Temporary Super-Admin Access Grant */
+  async grantAdminAccess(durationMinutes: number): Promise<{ ok: boolean; expires_at: number; message: string }> {
+    return await req("/api/auth/grant-admin-access", { method: "POST", body: JSON.stringify({ duration_minutes: durationMinutes }) });
+  },
+  async revokeAdminAccess(): Promise<{ ok: boolean; message: string }> {
+    return await req("/api/auth/revoke-admin-access", { method: "DELETE" });
+  },
+  async checkAdminGrant(tenantId: string): Promise<{ granted: boolean; expires_at?: number; remaining_seconds?: number }> {
+    try { return await req(`/api/auth/check-admin-grant/${tenantId}`); } catch { return { granted: false }; }
+  },
+  async listActiveGrants(): Promise<{ grants: Record<string, { expires_at: number; remaining_seconds: number }> }> {
+    try { return await req("/api/auth/active-grants"); } catch { return { grants: {} }; }
   },
 };

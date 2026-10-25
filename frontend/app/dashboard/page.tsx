@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import SiteNav from "@/components/layout/SiteNav";
 import { Button } from "@/components/ui/button";
-import { getTenant, getTenantInfo, getUserEmail, getUserRole, getCompanyUsers, UserProfile } from "@/lib/tenant";
+import { getTenant, getTenantInfo, getUserEmail, getUserRole, getCompanyUsers, UserProfile, isPlatformOwner } from "@/lib/tenant";
 import { useProjectsStore } from "@/store/projectsStore";
 import { 
   Building, 
@@ -18,7 +18,8 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from "lucide-react";
 import MiniGraph from "@/components/graph/MiniGraph";
 import NumberTicker from "@/components/effects/NumberTicker";
@@ -82,6 +83,35 @@ export default function UserDashboardPage() {
     : info.healthScore || 84;
 
   const totalAlerts = projects.reduce((acc, p) => acc + (p.alerts || 0), 0);
+
+  if (mounted && isPlatformOwner() && tenantId === "flowguard") {
+    return (
+      <div className="min-h-screen pb-28">
+        <SiteNav />
+        <main className="mx-auto max-w-2xl px-6 pt-24 text-center">
+          <div className="glass rounded-3xl p-10 border border-emerald-500/30">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 mb-5">
+              <Lock className="h-7 w-7" />
+            </div>
+            <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-mono text-emerald-400 border border-emerald-500/40 uppercase">
+              Zero-Knowledge Boundary Active
+            </span>
+            <h1 className="mt-4 text-2xl font-bold text-ink sm:text-3xl">
+              Platform Super Admins Cannot Access Customer Workspaces
+            </h1>
+            <p className="mt-3 text-xs text-mute leading-relaxed max-w-lg mx-auto">
+              Under FLOWGUARD&apos;s enterprise zero-trust security model, platform operators are strictly restricted from accessing client proprietary projects, internal microservices, and PR diffs. Super admin rights are limited to macro telemetry and ecosystem governance in Master Control.
+            </p>
+            <div className="mt-8 flex justify-center gap-3">
+              <Link href="/admin" className="rounded-xl bg-forest px-5 py-2.5 text-xs font-bold text-paper hover:bg-forest/90 transition-all">
+                Return to Master Control (/admin) →
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-24">
