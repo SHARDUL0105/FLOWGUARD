@@ -1,0 +1,68 @@
+{
+  "scan_id": "sec-12-39b3a31e-1792901378",
+  "pr_id": 12,
+  "tenant_id": "demo",
+  "commit_or_patch_hash": "39b3a31e54631b6b8224c289b634335a966109bfa570dda1aa6aaeca73c368f2",
+  "timestamp": "2026-10-25T04:09:38.358210+00:00",
+  "policy_version": "1.1.0",
+  "scanners": [
+    {
+      "scanner": "flowguard-secrets",
+      "status": "completed",
+      "version": null,
+      "duration_ms": 0.04,
+      "findings_count": 0,
+      "error_message": null
+    },
+    {
+      "scanner": "bandit",
+      "status": "completed",
+      "version": null,
+      "duration_ms": 1661.31,
+      "findings_count": 0,
+      "error_message": null
+    },
+    {
+      "scanner": "gitleaks",
+      "status": "unavailable",
+      "version": null,
+      "duration_ms": 10.61,
+      "findings_count": 0,
+      "error_message": "Executable 'gitleaks' not found on system PATH."
+    },
+    {
+      "scanner": "semgrep",
+      "status": "unavailable",
+      "version": null,
+      "duration_ms": 12.19,
+      "findings_count": 0,
+      "error_message": "Executable 'semgrep' not found on system PATH."
+    }
+  ],
+  "findings": [],
+  "policy": {
+    "verdict": "PASS",
+    "passed": true,
+    "blocking_findings_count": 0,
+    "informational_findings_count": 0,
+    "critical_count": 0,
+    "high_count": 0,
+    "medium_count": 0,
+    "low_count": 0,
+    "info_count": 0,
+    "exposed_secrets_count": 0,
+    "vulnerable_dependencies_count": 0,
+    "new_findings_count": 0,
+    "pre_existing_findings_count": 0,
+    "new_blocking_count": 0,
+    "pre_existing_blocking_count": 0,
+    "blocking_reasons": [],
+    "failed_scanners": [],
+    "missing_required_scanners": [],
+    "summary": "Security Policy PASS: Clean scan with zero security findings across all configured scanners.",
+    "policy_version": "1.1.0"
+  },
+  "is_clean": true,
+  "has_failures": false,
+  "remediation_patch": null
+}

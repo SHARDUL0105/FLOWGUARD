@@ -45,4 +45,120 @@ export interface AnalyzeResponse {
 export interface HealResponse {
   id: number; gate: "accepted" | "rejected"; reason: string | null; score_before: number; score_after: number;
   patch_diff: string; per_scenario_after: ({ scenario: ScenarioId } & ScenarioNumbers)[]; verified_under: ScenarioId[];
+
+  // Phase 6 & 10 Extended Attributes
+  patch_hash?: string;
+  revision_id?: string;
+  changed_files?: string[];
+  combined_status?: CombinedGateStatus;
+  eligible_for_review?: boolean;
+  automatic_merge_authorized?: boolean;
+  review_signoff_required?: boolean;
+  reviewer_approval_status?: string;
+  security_revalidation?: {
+    passed: boolean;
+    policy_verdict: string;
+    resolved_count: number;
+    introduced_count: number;
+    remaining_count: number;
+    blocking_introduced_count: number;
+    blocking_remaining_count: number;
+    resolved_findings?: SecurityFinding[];
+    introduced_findings?: SecurityFinding[];
+    remaining_findings?: SecurityFinding[];
+    summary: string;
+  };
+  original?: Record<string, any>;
+  post_fix?: Record<string, any>;
+}
+
+// ─── Security & Combined PR Gate Types (Phases 8-11) ─────────────────────────
+
+export type SecuritySeverity = "critical" | "high" | "medium" | "low" | "info";
+export type ScannerStatus = "completed" | "failed" | "skipped" | "unavailable";
+export type CombinedGateStatus =
+  | "ELIGIBLE_FOR_REVIEW"
+  | "BLOCKED_SECURITY"
+  | "BLOCKED_RELIABILITY"
+  | "BLOCKED_BOTH"
+  | "BLOCKED_CHECKS_INCOMPLETE";
+
+export interface SecurityFinding {
+  id: string;
+  scanner: string;
+  rule_id: string;
+  category: "sast" | "secret" | "dependency" | "configuration" | "iac";
+  severity: SecuritySeverity;
+  title: string;
+  explanation: string;
+  file_path: string | null;
+  line_number: number | null;
+  remediation: string;
+  confidence: string;
+  package_name?: string | null;
+  advisory_id?: string | null;
+  is_new: boolean;
+  raw_snippet?: string | null;
+}
+
+export interface ScannerMetadata {
+  scanner: string;
+  status: ScannerStatus;
+  version?: string | null;
+  duration_ms?: number;
+  findings_count: number;
+  error_message?: string | null;
+}
+
+export interface SecurityPolicyResult {
+  verdict: "PASS" | "FAIL" | "INCOMPLETE";
+  passed: boolean;
+  blocking_findings_count: number;
+  critical_count: number;
+  high_count: number;
+  exposed_secrets_count: number;
+  summary: string;
+  policy_version: string;
+}
+
+export interface SecurityScanReport {
+  scan_id: string;
+  pr_id: number | string;
+  tenant_id: string;
+  commit_or_patch_hash: string;
+  timestamp: string;
+  policy_version: string;
+  scanners: ScannerMetadata[];
+  findings: SecurityFinding[];
+  policy: SecurityPolicyResult;
+  is_clean: boolean;
+  has_failures: boolean;
+}
+
+export interface CombinedVerificationResult {
+  pr_id: number | string;
+  tenant_id: string;
+  timestamp: string;
+  combined_status: CombinedGateStatus;
+  eligible_for_review: boolean;
+  automatic_merge_authorized: boolean;
+  review_signoff_required: boolean;
+  all_checks_completed: boolean;
+  reliability: {
+    status: "PASS" | "FAIL" | "INCOMPLETE";
+    score: number;
+    score_base: number;
+    verdict: string;
+    findings_count: number;
+  };
+  security: {
+    status: "PASS" | "FAIL" | "INCOMPLETE";
+    blocking_findings_count: number;
+    critical_count: number;
+    high_count: number;
+    secrets_count: number;
+    policy_verdict: string;
+  };
+  machine_readable_reasons: string[];
+  decision_summary: string;
 }

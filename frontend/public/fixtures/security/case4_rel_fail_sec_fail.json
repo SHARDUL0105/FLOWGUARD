@@ -1,0 +1,367 @@
+{
+  "case_id": "case_4_rel_fail_sec_fail",
+  "name": "Case 4: Dual Reliability & Security Failure",
+  "description": "Removes circuit breaker and adds retries: 4 on order->inventory edge AND introduces an unredacted auth token in configuration.",
+  "pr_id": 22,
+  "title": "Unbounded retry client with credentials",
+  "author": "dev-security",
+  "project_id": "checkout",
+  "diff": "--- a/order-service/config.yaml\n+++ b/order-service/config.yaml\n@@ -7,5 +7,7 @@ client:\n   inventory:\n+    retries: 4\n+    circuit_breaker: false\n+    fallback: false\n+    auth_token: \"flowguard_demo_token_sec_1122334455\" ",
+  "expected_reliability": "FAIL",
+  "expected_security": "FAIL",
+  "expected_combined_status": "BLOCKED_BOTH",
+  "eligible_for_review": false,
+  "reliability": {
+    "id": 22,
+    "score_base": 84,
+    "score_pr": 32,
+    "verdict": "regression",
+    "per_scenario": [
+      {
+        "scenario": "db_latency",
+        "base": {
+          "p95_ms": 628,
+          "error_rate": 0.004
+        },
+        "pr": {
+          "p95_ms": 3000,
+          "error_rate": 0.929
+        }
+      },
+      {
+        "scenario": "service_down",
+        "base": {
+          "p95_ms": 369,
+          "error_rate": 0.0
+        },
+        "pr": {
+          "p95_ms": 206,
+          "error_rate": 1.0
+        }
+      },
+      {
+        "scenario": "traffic_spike",
+        "base": {
+          "p95_ms": 2018,
+          "error_rate": 0.028
+        },
+        "pr": {
+          "p95_ms": 2018,
+          "error_rate": 0.028
+        }
+      }
+    ],
+    "findings": [
+      {
+        "rule": "R1_TIMEOUT",
+        "severity": "high",
+        "edge": "order->inventory",
+        "message": "No effective timeout on order -> inventory; callers can hang until the gateway gives up.",
+        "evidence": "timeout_ms: null"
+      },
+      {
+        "rule": "R2_RETRY_STORM",
+        "severity": "high",
+        "edge": "order->inventory",
+        "message": "4 retries without backoff multiplies load on a struggling dependency.",
+        "evidence": "retries: 4"
+      },
+      {
+        "rule": "R3_NO_FALLBACK",
+        "severity": "medium",
+        "edge": "order->inventory",
+        "message": "No circuit breaker or fallback on order -> inventory.",
+        "evidence": "breaker: false, fallback: false"
+      }
+    ],
+    "cascade_path": [
+      "database",
+      "inventory",
+      "order",
+      "gateway",
+      "frontend"
+    ],
+    "diff": "--- a/order-service/config.yaml\n+++ b/order-service/config.yaml\n@@ -7,5 +7,7 @@ client:\n   inventory:\n+    retries: 4\n+    circuit_breaker: false\n+    fallback: false\n+    auth_token: \"flowguard_demo_token_sec_1122334455\" ",
+    "comment": "### FLOWGUARD Resilience Check\n**Regression.** Resilience 84 -> 32\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 3000 ms / 92.9% |\n| Service down | 369 ms / 0.0% | 206 ms / 100.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: No effective timeout on order -> inventory; callers can hang until the gateway gives up.\nCascade: Database -> Inventory -> Order -> Gateway -> Frontend\n\nSuggested fix: restore timeout_ms 700, bound retries to 1, re-enable breaker and fallback."
+  },
+  "security": {
+    "scan_id": "sec-22-cefcba5a-1792901380",
+    "pr_id": 22,
+    "tenant_id": "demo",
+    "commit_or_patch_hash": "cefcba5af99d29e4a17a9708e7063fc6786eb8e8d1455b280ef80853307c4303",
+    "timestamp": "2026-10-25T04:09:40.176326+00:00",
+    "policy_version": "1.1.0",
+    "scanners": [
+      {
+        "scanner": "flowguard-secrets",
+        "status": "completed",
+        "version": null,
+        "duration_ms": 0.19,
+        "findings_count": 1,
+        "error_message": null
+      },
+      {
+        "scanner": "bandit",
+        "status": "completed",
+        "version": null,
+        "duration_ms": 2217.78,
+        "findings_count": 0,
+        "error_message": null
+      },
+      {
+        "scanner": "gitleaks",
+        "status": "unavailable",
+        "version": null,
+        "duration_ms": 27.0,
+        "findings_count": 0,
+        "error_message": "Executable 'gitleaks' not found on system PATH."
+      },
+      {
+        "scanner": "semgrep",
+        "status": "unavailable",
+        "version": null,
+        "duration_ms": 27.8,
+        "findings_count": 0,
+        "error_message": "Executable 'semgrep' not found on system PATH."
+      }
+    ],
+    "findings": [
+      {
+        "id": "find-sec-secret-006-9431efc2512c",
+        "scanner": "flowguard-secrets",
+        "rule_id": "SEC-SECRET-006",
+        "category": "secret",
+        "severity": "high",
+        "title": "Hardcoded Plaintext Password or Token Assignment",
+        "explanation": "A variable assignment contains a plaintext password or API token.",
+        "file_path": "order-service/config.yaml",
+        "line_number": 11,
+        "remediation": "Refactor configuration to read passwords from environment variables or a configuration server.",
+        "confidence": "high",
+        "package_name": null,
+        "advisory_id": null,
+        "is_new": true,
+        "raw_snippet": "auth_token: [REDACTED]"
+      }
+    ],
+    "policy": {
+      "verdict": "FAIL",
+      "passed": false,
+      "blocking_findings_count": 1,
+      "informational_findings_count": 0,
+      "critical_count": 0,
+      "high_count": 1,
+      "medium_count": 0,
+      "low_count": 0,
+      "info_count": 0,
+      "exposed_secrets_count": 1,
+      "vulnerable_dependencies_count": 0,
+      "new_findings_count": 1,
+      "pre_existing_findings_count": 0,
+      "new_blocking_count": 1,
+      "pre_existing_blocking_count": 0,
+      "blocking_reasons": [
+        "[NEW] Exposed secret violation: Hardcoded Plaintext Password or Token Assignment (SEC-SECRET-006) at order-service/config.yaml:11"
+      ],
+      "failed_scanners": [],
+      "missing_required_scanners": [],
+      "summary": "Security Policy FAIL: 1 blocking vulnerabilities detected (1 new, 0 pre-existing). Secrets: 1, Critical: 0, High: 1.",
+      "policy_version": "1.1.0"
+    },
+    "is_clean": false,
+    "has_failures": false,
+    "remediation_patch": null
+  },
+  "combined": {
+    "pr_id": 22,
+    "tenant_id": "demo",
+    "timestamp": "2026-10-25T04:09:42.454476+00:00",
+    "combined_status": "BLOCKED_BOTH",
+    "eligible_for_review": false,
+    "automatic_merge_authorized": false,
+    "review_signoff_required": true,
+    "all_checks_completed": true,
+    "reliability": {
+      "status": "FAIL",
+      "score": 32,
+      "score_base": 84,
+      "verdict": "regression",
+      "findings_count": 3,
+      "report": {
+        "id": 22,
+        "score_base": 84,
+        "score_pr": 32,
+        "verdict": "regression",
+        "per_scenario": [
+          {
+            "scenario": "db_latency",
+            "base": {
+              "p95_ms": 628,
+              "error_rate": 0.004
+            },
+            "pr": {
+              "p95_ms": 3000,
+              "error_rate": 0.929
+            }
+          },
+          {
+            "scenario": "service_down",
+            "base": {
+              "p95_ms": 369,
+              "error_rate": 0.0
+            },
+            "pr": {
+              "p95_ms": 206,
+              "error_rate": 1.0
+            }
+          },
+          {
+            "scenario": "traffic_spike",
+            "base": {
+              "p95_ms": 2018,
+              "error_rate": 0.028
+            },
+            "pr": {
+              "p95_ms": 2018,
+              "error_rate": 0.028
+            }
+          }
+        ],
+        "findings": [
+          {
+            "rule": "R1_TIMEOUT",
+            "severity": "high",
+            "edge": "order->inventory",
+            "message": "No effective timeout on order -> inventory; callers can hang until the gateway gives up.",
+            "evidence": "timeout_ms: null"
+          },
+          {
+            "rule": "R2_RETRY_STORM",
+            "severity": "high",
+            "edge": "order->inventory",
+            "message": "4 retries without backoff multiplies load on a struggling dependency.",
+            "evidence": "retries: 4"
+          },
+          {
+            "rule": "R3_NO_FALLBACK",
+            "severity": "medium",
+            "edge": "order->inventory",
+            "message": "No circuit breaker or fallback on order -> inventory.",
+            "evidence": "breaker: false, fallback: false"
+          }
+        ],
+        "cascade_path": [
+          "database",
+          "inventory",
+          "order",
+          "gateway",
+          "frontend"
+        ],
+        "diff": "--- a/order-service/config.yaml\n+++ b/order-service/config.yaml\n@@ -7,5 +7,7 @@ client:\n   inventory:\n+    retries: 4\n+    circuit_breaker: false\n+    fallback: false\n+    auth_token: \"flowguard_demo_token_sec_1122334455\" ",
+        "comment": "### FLOWGUARD Resilience Check\n**Regression.** Resilience 84 -> 32\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 3000 ms / 92.9% |\n| Service down | 369 ms / 0.0% | 206 ms / 100.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: No effective timeout on order -> inventory; callers can hang until the gateway gives up.\nCascade: Database -> Inventory -> Order -> Gateway -> Frontend\n\nSuggested fix: restore timeout_ms 700, bound retries to 1, re-enable breaker and fallback."
+      }
+    },
+    "security": {
+      "status": "FAIL",
+      "blocking_findings_count": 1,
+      "critical_count": 0,
+      "high_count": 1,
+      "secrets_count": 1,
+      "policy_verdict": "FAIL",
+      "report": {
+        "scan_id": "sec-22-cefcba5a-1792901380",
+        "pr_id": 22,
+        "tenant_id": "demo",
+        "commit_or_patch_hash": "cefcba5af99d29e4a17a9708e7063fc6786eb8e8d1455b280ef80853307c4303",
+        "timestamp": "2026-10-25T04:09:40.176326+00:00",
+        "policy_version": "1.1.0",
+        "scanners": [
+          {
+            "scanner": "flowguard-secrets",
+            "status": "completed",
+            "version": null,
+            "duration_ms": 0.19,
+            "findings_count": 1,
+            "error_message": null
+          },
+          {
+            "scanner": "bandit",
+            "status": "completed",
+            "version": null,
+            "duration_ms": 2217.78,
+            "findings_count": 0,
+            "error_message": null
+          },
+          {
+            "scanner": "gitleaks",
+            "status": "unavailable",
+            "version": null,
+            "duration_ms": 27.0,
+            "findings_count": 0,
+            "error_message": "Executable 'gitleaks' not found on system PATH."
+          },
+          {
+            "scanner": "semgrep",
+            "status": "unavailable",
+            "version": null,
+            "duration_ms": 27.8,
+            "findings_count": 0,
+            "error_message": "Executable 'semgrep' not found on system PATH."
+          }
+        ],
+        "findings": [
+          {
+            "id": "find-sec-secret-006-9431efc2512c",
+            "scanner": "flowguard-secrets",
+            "rule_id": "SEC-SECRET-006",
+            "category": "secret",
+            "severity": "high",
+            "title": "Hardcoded Plaintext Password or Token Assignment",
+            "explanation": "A variable assignment contains a plaintext password or API token.",
+            "file_path": "order-service/config.yaml",
+            "line_number": 11,
+            "remediation": "Refactor configuration to read passwords from environment variables or a configuration server.",
+            "confidence": "high",
+            "package_name": null,
+            "advisory_id": null,
+            "is_new": true,
+            "raw_snippet": "auth_token: [REDACTED]"
+          }
+        ],
+        "policy": {
+          "verdict": "FAIL",
+          "passed": false,
+          "blocking_findings_count": 1,
+          "informational_findings_count": 0,
+          "critical_count": 0,
+          "high_count": 1,
+          "medium_count": 0,
+          "low_count": 0,
+          "info_count": 0,
+          "exposed_secrets_count": 1,
+          "vulnerable_dependencies_count": 0,
+          "new_findings_count": 1,
+          "pre_existing_findings_count": 0,
+          "new_blocking_count": 1,
+          "pre_existing_blocking_count": 0,
+          "blocking_reasons": [
+            "[NEW] Exposed secret violation: Hardcoded Plaintext Password or Token Assignment (SEC-SECRET-006) at order-service/config.yaml:11"
+          ],
+          "failed_scanners": [],
+          "missing_required_scanners": [],
+          "summary": "Security Policy FAIL: 1 blocking vulnerabilities detected (1 new, 0 pre-existing). Secrets: 1, Critical: 0, High: 1.",
+          "policy_version": "1.1.0"
+        },
+        "is_clean": false,
+        "has_failures": false,
+        "remediation_patch": null
+      }
+    },
+    "machine_readable_reasons": [
+      "RELIABILITY_FAIL: Score 32/84 regressed under fault scenarios.",
+      "SECURITY_FAIL: 1 policy-blocking security flaw(s) detected.",
+      "DUAL_GATE_FAILURE: Both reliability and security criteria failed. Remediate resilience and security before retry."
+    ],
+    "decision_summary": "Verification BLOCKED (Dual Failure): Both Reliability (Score: 32) and Security (1 blocking flaws) failed. Merge blocked."
+  }
+}

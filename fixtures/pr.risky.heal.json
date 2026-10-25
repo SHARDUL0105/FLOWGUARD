@@ -26,5 +26,98 @@
   "db_latency",
   "service_down",
   "traffic_spike"
- ]
+ ],
+ "patch_hash": "46ee45a538235d05c05f5d1a42606fa1983d8838c6919885d15f03f29d91d89b",
+ "revision_id": "rev-12-8a255c6c179b",
+ "changed_files": [
+  "config/order->inventory.yaml"
+ ],
+ "timestamp": "2026-10-25T04:09:32.193629+00:00",
+ "tenant_id": "demo",
+ "original": {
+  "revision_hash": "39b3a31e54631b6b8224c289b634335a966109bfa570dda1aa6aaeca73c368f2",
+  "reliability": {
+   "score": 32,
+   "score_base": 84,
+   "verdict": "regression",
+   "findings_count": 3
+  },
+  "security": {
+   "policy_verdict": "PASS",
+   "blocking_count": 0,
+   "secrets_count": 0,
+   "findings": []
+  },
+  "combined_status": "BLOCKED_RELIABILITY"
+ },
+ "post_fix": {
+  "revision_hash": "46ee45a538235d05c05f5d1a42606fa1983d8838c6919885d15f03f29d91d89b",
+  "reliability": {
+   "score_before": 32,
+   "score_after": 84,
+   "gate": "accepted",
+   "reason": null
+  },
+  "security": {
+   "policy_verdict": "PASS",
+   "blocking_count": 0,
+   "secrets_count": 0,
+   "findings": [
+    {
+     "id": "find-bandit-b110-683366",
+     "scanner": "bandit",
+     "rule_id": "B110",
+     "category": "sast",
+     "severity": "low",
+     "title": "Bandit B110: try_except_pass",
+     "explanation": "Try, Except, Pass detected.",
+     "file_path": "backend\\app\\pr\\prs.py",
+     "line_number": 250,
+     "remediation": "Inspect line 250 and resolve according to Bandit guidelines: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html",
+     "confidence": "high",
+     "package_name": null,
+     "advisory_id": null,
+     "is_new": true,
+     "raw_snippet": "249             }\n250     except Exception:\n251         pass\n252     return None\n"
+    }
+   ]
+  },
+  "combined_status": "ELIGIBLE_FOR_REVIEW"
+ },
+ "security_revalidation": {
+  "passed": true,
+  "policy_verdict": "PASS",
+  "resolved_count": 0,
+  "introduced_count": 1,
+  "remaining_count": 0,
+  "blocking_introduced_count": 0,
+  "blocking_remaining_count": 0,
+  "resolved_findings": [],
+  "introduced_findings": [
+   {
+    "id": "find-bandit-b110-683366",
+    "scanner": "bandit",
+    "rule_id": "B110",
+    "category": "sast",
+    "severity": "low",
+    "title": "Bandit B110: try_except_pass",
+    "explanation": "Try, Except, Pass detected.",
+    "file_path": "backend\\app\\pr\\prs.py",
+    "line_number": 250,
+    "remediation": "Inspect line 250 and resolve according to Bandit guidelines: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html",
+    "confidence": "high",
+    "package_name": null,
+    "advisory_id": null,
+    "is_new": true,
+    "raw_snippet": "249             }\n250     except Exception:\n251         pass\n252     return None\n"
+   }
+  ],
+  "remaining_findings": [],
+  "summary": "All security revalidations passed cleanly."
+ },
+ "combined_status": "ELIGIBLE_FOR_REVIEW",
+ "eligible_for_review": true,
+ "automatic_merge_authorized": false,
+ "review_signoff_required": true,
+ "reviewer_approval_status": "pending_review"
 }

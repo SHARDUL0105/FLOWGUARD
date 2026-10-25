@@ -1,0 +1,144 @@
+{
+  "pr_id": 13,
+  "tenant_id": "demo",
+  "timestamp": "2026-10-25T04:09:36.645154+00:00",
+  "combined_status": "ELIGIBLE_FOR_REVIEW",
+  "eligible_for_review": true,
+  "automatic_merge_authorized": false,
+  "review_signoff_required": true,
+  "all_checks_completed": true,
+  "reliability": {
+    "status": "PASS",
+    "score": 84,
+    "score_base": 84,
+    "verdict": "pass",
+    "findings_count": 0,
+    "report": {
+      "id": 13,
+      "score_base": 84,
+      "score_pr": 84,
+      "verdict": "pass",
+      "per_scenario": [
+        {
+          "scenario": "db_latency",
+          "base": {
+            "p95_ms": 628,
+            "error_rate": 0.004
+          },
+          "pr": {
+            "p95_ms": 628,
+            "error_rate": 0.004
+          }
+        },
+        {
+          "scenario": "service_down",
+          "base": {
+            "p95_ms": 369,
+            "error_rate": 0.0
+          },
+          "pr": {
+            "p95_ms": 369,
+            "error_rate": 0.0
+          }
+        },
+        {
+          "scenario": "traffic_spike",
+          "base": {
+            "p95_ms": 2018,
+            "error_rate": 0.028
+          },
+          "pr": {
+            "p95_ms": 2018,
+            "error_rate": 0.028
+          }
+        }
+      ],
+      "findings": [],
+      "cascade_path": [],
+      "diff": "--- a/README.md\n+++ b/README.md\n@@ -10,3 +10,5 @@\n ## Logging\n Detailed debug logs for order flows have been moved to standard JSON logging.\n+Health check probes will not log at info level.",
+      "comment": "### FLOWGUARD Resilience Check\n**Pass.** Resilience 84 -> 84\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 628 ms / 0.4% |\n| Service down | 369 ms / 0.0% | 369 ms / 0.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: None (no configuration risks identified).\nCascade: None (no cascading failure observed).\n\nSuggested fix: None required. Pull request maintains baseline resilience."
+    }
+  },
+  "security": {
+    "status": "PASS",
+    "blocking_findings_count": 0,
+    "critical_count": 0,
+    "high_count": 0,
+    "secrets_count": 0,
+    "policy_verdict": "PASS",
+    "report": {
+      "scan_id": "sec-13-59d41938-1792901375",
+      "pr_id": 13,
+      "tenant_id": "demo",
+      "commit_or_patch_hash": "59d419388a801f53c73facbc6b2354c57d5127a6e9ca27e840d99a9cafe324d5",
+      "timestamp": "2026-10-25T04:09:35.217263+00:00",
+      "policy_version": "1.1.0",
+      "scanners": [
+        {
+          "scanner": "flowguard-secrets",
+          "status": "completed",
+          "version": null,
+          "duration_ms": 0.06,
+          "findings_count": 0,
+          "error_message": null
+        },
+        {
+          "scanner": "bandit",
+          "status": "completed",
+          "version": null,
+          "duration_ms": 1388.45,
+          "findings_count": 0,
+          "error_message": null
+        },
+        {
+          "scanner": "gitleaks",
+          "status": "unavailable",
+          "version": null,
+          "duration_ms": 17.63,
+          "findings_count": 0,
+          "error_message": "Executable 'gitleaks' not found on system PATH."
+        },
+        {
+          "scanner": "semgrep",
+          "status": "unavailable",
+          "version": null,
+          "duration_ms": 18.31,
+          "findings_count": 0,
+          "error_message": "Executable 'semgrep' not found on system PATH."
+        }
+      ],
+      "findings": [],
+      "policy": {
+        "verdict": "PASS",
+        "passed": true,
+        "blocking_findings_count": 0,
+        "informational_findings_count": 0,
+        "critical_count": 0,
+        "high_count": 0,
+        "medium_count": 0,
+        "low_count": 0,
+        "info_count": 0,
+        "exposed_secrets_count": 0,
+        "vulnerable_dependencies_count": 0,
+        "new_findings_count": 0,
+        "pre_existing_findings_count": 0,
+        "new_blocking_count": 0,
+        "pre_existing_blocking_count": 0,
+        "blocking_reasons": [],
+        "failed_scanners": [],
+        "missing_required_scanners": [],
+        "summary": "Security Policy PASS: Clean scan with zero security findings across all configured scanners.",
+        "policy_version": "1.1.0"
+      },
+      "is_clean": true,
+      "has_failures": false,
+      "remediation_patch": null
+    }
+  },
+  "machine_readable_reasons": [
+    "RELIABILITY_PASS: Resilience score 84/84 meets baseline without regression.",
+    "SECURITY_PASS: Clean scan with 0 blocking security vulnerabilities across all tools.",
+    "REVIEW_REQUIRED: PR is eligible for human review. Peer or admin sign-off required before merge."
+  ],
+  "decision_summary": "Verification PASS: Resilience (84/100) and Security checks passed cleanly. PR is ELIGIBLE_FOR_REVIEW. (Notice: Automatic merge is not authorized; reviewer approval required)."
+}

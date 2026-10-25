@@ -1,5 +1,5 @@
 // Typed REST wrappers. Every call falls back to recorded fixtures (public/fixtures) when the backend is unreachable.
-import type { AnalyzeResponse, HealResponse, Mode, PRListItem, ScenarioId, WhatIfResponse } from "./types";
+import type { AnalyzeResponse, CombinedVerificationResult, HealResponse, Mode, PRListItem, ScenarioId, SecurityScanReport, WhatIfResponse } from "./types";
 import { WHATIF } from "./fixtures";
 import { getTenant, getAuthToken } from "./tenant";
 
@@ -68,6 +68,41 @@ export const api = {
   async analyzePR(id: number): Promise<{ data: AnalyzeResponse; source: Source }> {
     try { return { data: await req<AnalyzeResponse>(`/api/pr/${id}/analyze`, { method: "POST" }), source: "live" }; }
     catch { return { data: await fixture<AnalyzeResponse>(id === 13 ? "pr.safe.analyze.json" : "pr.risky.analyze.json"), source: "fixture" }; }
+  },
+  async analyzeSecurityPR(id: number): Promise<{ data: SecurityScanReport; source: Source }> {
+    try { return { data: await req<SecurityScanReport>(`/api/pr/${id}/security/analyze`, { method: "POST" }), source: "live" }; }
+    catch {
+      const fixName = id === 13 ? "pr.13.security.json" : "pr.12.security.json";
+      return { data: await fixture<SecurityScanReport>(fixName), source: "fixture" };
+    }
+  },
+  async combinedVerification(id: number): Promise<{ data: CombinedVerificationResult; source: Source }> {
+    try { return { data: await req<CombinedVerificationResult>(`/api/pr/${id}/combined`), source: "live" }; }
+    catch {
+      const fixName = id === 13 ? "pr.13.combined.json" : "pr.12.combined.json";
+      return { data: await fixture<CombinedVerificationResult>(fixName), source: "fixture" };
+    }
+  },
+  async demoCases(): Promise<Record<string, any>> {
+    try { return await req<Record<string, any>>("/api/pr-demo-cases"); }
+    catch {
+      try {
+        const c1 = await fixture<any>("security/case1_rel_pass_sec_pass.json");
+        const c2 = await fixture<any>("security/case2_rel_pass_sec_fail.json");
+        const c3 = await fixture<any>("security/case3_rel_fail_sec_pass.json");
+        const c4 = await fixture<any>("security/case4_rel_fail_sec_fail.json");
+        const c5 = await fixture<any>("security/case5_checks_incomplete.json");
+        return {
+          case_1_rel_pass_sec_pass: c1,
+          case_2_rel_pass_sec_fail: c2,
+          case_3_rel_fail_sec_pass: c3,
+          case_4_rel_fail_sec_fail: c4,
+          case_5_checks_incomplete: c5,
+        };
+      } catch {
+        return {};
+      }
+    }
   },
   async healPR(id: number): Promise<{ data: HealResponse; source: Source }> {
     try { return { data: await req<HealResponse>(`/api/pr/${id}/heal`, { method: "POST" }), source: "live" }; }

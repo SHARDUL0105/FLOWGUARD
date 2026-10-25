@@ -3,7 +3,8 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
+from typing import Any, Dict
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from .schemas import ChaosRequest, DemoModeRequest, WhatIfRequest
 from pydantic import BaseModel
@@ -16,6 +17,7 @@ from .intel.runtime.predictor import what_if
 from .intel.runtime.scoring import resilience_score
 from .pr.prs import list_prs
 from .pr.service import analyze_pr, heal_pr
+from .security import scan_pr_security, verify_pr_combined
 from .ai.brief import build_evidence, stream_brief_events
 from . import db
 from . import auth
@@ -41,7 +43,7 @@ def get_current_user(request: Request) -> dict:
         )
     return user
 
-<<<<<<< HEAD
+
 def current_tenant(
     x_tenant_id: str | None = Header(default=None),
     user: dict = Depends(get_current_user),
@@ -50,54 +52,22 @@ def current_tenant(
     try:
         tenant_id = db.resolve_tenant(user["tenant_id"])
         if x_tenant_id and db.resolve_tenant(x_tenant_id) != tenant_id:
-            raise HTTPException(status_code=403, detail="Tenant header does not match the authenticated user.")
+            raise HTTPException(
+                status_code=403,
+                detail="Tenant header does not match the authenticated user.",
+            )
         return tenant_id
-=======
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
-# Active grants stored above
-
-_active_grants: dict = {}
-
-def is_grant_active(tenant_id: str) -> bool:
-    grant_exp = _active_grants.get(tenant_id)
-    now = int(time.time())
-    if grant_exp and grant_exp > now:
-        return True
-    if tenant_id in _active_grants:
-        del _active_grants[tenant_id]
-    return False
-
-def check_tenant_privacy_guard(tenant_id: str):
-    """Enforce Zero-Knowledge Multi-Tenancy. Super Admins / Platform Operators cannot inspect customer projects."""
+def check_tenant_privacy_guard(tenant_id: str) -> None:
+    """Prevent access to the reserved FlowGuard platform tenant's project data."""
     if tenant_id == "flowguard":
         raise HTTPException(
             status_code=403,
-            detail="Zero-Knowledge Privacy Guard: Platform administrators are cryptographically restricted from accessing customer proprietary projects or topologies."
+            detail="This tenant's project data is not accessible through this endpoint.",
         )
 
-def current_tenant(
-    x_tenant_id: str | None = Header(default=None),
-    authorization: str | None = Header(default=None),
-) -> str:
-    """Which organization is asking. Every stored read and write is scoped to this value."""
-    try:
-        t = db.resolve_tenant(x_tenant_id)
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization.split(" ")[1]
-            payload = auth.verify_token(token)
-            if payload:
-                user_role = payload.get("role")
-                # If a super admin is requesting access to a customer tenant:
-                if user_role == "platform_owner" and t != "flowguard":
-                    if not is_grant_active(t):
-                        raise HTTPException(
-                            status_code=403,
-                            detail=f"Zero-Knowledge Isolation Enforced: No active emergency grant for tenant '{t}'. The tenant must explicitly grant temporary emergency access to resolve an anomaly."
-                        )
-        return t
->>>>>>> 779c3a3204c13dc7ad0ef09fd3d92a82dd8fb8aa
-    except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
 
 def require_company_admin(user: dict = Depends(get_current_user)) -> dict:
     if user["role"] not in {"company_admin", "platform_owner"}:
@@ -184,12 +154,120 @@ def analyze(pr_id: int, tenant_id: str = Depends(current_tenant)):
 
 @router.post('/pr/{pr_id}/heal')
 def heal(pr_id: int, tenant_id: str = Depends(current_tenant)):
-    r = heal_pr(pr_id, tenant_id)
+    r = heal_pr(pr_id, tenant_id=tenant_id)
     if r is None: raise HTTPException(404, f'Pull request #{pr_id} not found')
     db.save('heal_results', r, tenant_id)
     return r
 
-@public_router.get('/tenants')
+@router.post('/pr/{pr_id}/revalidate')
+def revalidate_patch_endpoint(pr_id: int, payload: Dict[str, Any] = Body(default={}), tenant_id: str = Depends(current_tenant)):
+    """Revalidate an explicit patch diff against the PR's original security baseline."""
+    from .security.revalidation import revalidate_security_patch
+    from .security.orchestrator import scan_pr_security
+    orig_sec = scan_pr_security(pr_id, tenant_id=tenant_id)
+    patched_diff = payload.get("patch_diff", "")
+    is_verified, report, summary = revalidate_security_patch(
+        original_report=orig_sec,
+        patched_diff=patched_diff,
+        pr_id=pr_id,
+        tenant_id=tenant_id,
+    )
+    return {
+        "pr_id": pr_id,
+        "is_verified": is_verified,
+        "summary": summary,
+        "revalidated_report": report.model_dump(),
+    }
+
+@router.post('/pr/{pr_id}/review/approve')
+def approve_pr_review(pr_id: int, payload: Dict[str, Any] = Body(default={}), tenant_id: str = Depends(current_tenant)):
+    """Record explicit human reviewer approval on a verified PR revision."""
+    from .security.combined import verify_pr_combined
+    from .security.revalidation import record_reviewer_approval
+
+    combined = verify_pr_combined(pr_id, tenant_id=tenant_id)
+    if combined.combined_status != "ELIGIBLE_FOR_REVIEW":
+        raise HTTPException(
+            400,
+            f"PR #{pr_id} cannot be approved for merge. Combined gate status is '{combined.combined_status}'. "
+            "Both reliability and security must be PASS (ELIGIBLE_FOR_REVIEW) before approval.",
+        )
+
+    reviewer_name = payload.get("reviewer", "lead-reviewer")
+    role = payload.get("role", "reviewer")
+    comments = payload.get("comments", "Reviewer sign-off granted after verified reliability and security checks.")
+    revision_id = payload.get("revision_id", f"rev-{pr_id}-verified")
+
+    approval = record_reviewer_approval(
+        pr_id=pr_id,
+        revision_id=revision_id,
+        reviewer_name=reviewer_name,
+        role=role,
+        tenant_id=tenant_id,
+        comments=comments,
+    )
+    return approval
+
+@router.get('/pr/{pr_id}/review/status')
+def get_review_status(pr_id: int, tenant_id: str = Depends(current_tenant)):
+    """Check current reviewer approval status and merge eligibility."""
+    from .security.combined import verify_pr_combined
+    from .security.revalidation import get_reviewer_approval
+
+    approval = get_reviewer_approval(pr_id, tenant_id=tenant_id)
+    combined = verify_pr_combined(pr_id, tenant_id=tenant_id)
+    return {
+        "pr_id": pr_id,
+        "tenant_id": tenant_id,
+        "combined_status": combined.combined_status,
+        "eligible_for_review": combined.eligible_for_review,
+        "review_signoff_required": True,
+        "has_reviewer_approval": approval is not None,
+        "approval_details": approval,
+        "simulated_merge_ready": (combined.combined_status == "ELIGIBLE_FOR_REVIEW" and approval is not None),
+    }
+
+@router.post('/pr/{pr_id}/merge')
+def simulated_merge(pr_id: int, payload: Dict[str, Any] = Body(default={}), tenant_id: str = Depends(current_tenant)):
+    """Execute simulated merge with explicit reviewer approval and ELIGIBLE_FOR_REVIEW verification."""
+    from .security.revalidation import execute_simulated_merge
+    actor = payload.get("actor", "repo-admin")
+    try:
+        res = execute_simulated_merge(pr_id, tenant_id=tenant_id, actor_name=actor)
+        return res
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+@router.post('/pr/{pr_id}/security/analyze')
+def analyze_security(pr_id: int, tenant_id: str = Depends(current_tenant)):
+    """Run independent static security scan on a pull request."""
+    r = scan_pr_security(pr_id, tenant_id=tenant_id)
+    return r.model_dump()
+
+@router.get('/pr/{pr_id}/combined')
+@router.post('/pr/{pr_id}/combined')
+def combined_verification(pr_id: int, tenant_id: str = Depends(current_tenant)):
+    """Evaluate unified PR gate combining reliability and security results."""
+    res = verify_pr_combined(pr_id, tenant_id=tenant_id)
+    return res.model_dump()
+
+@router.get('/pr/demo-cases/all')
+@router.get('/pr-demo-cases')
+def list_demo_cases():
+    """Retrieve all four reproducible reliability/security demonstration cases + incomplete demo."""
+    from .security.fixtures import get_all_four_cases
+    return get_all_four_cases()
+
+@router.get('/pr/demo-cases/{case_id}')
+def get_demo_case(case_id: str):
+    """Retrieve a specific reproducible demonstration case by ID or alias."""
+    from .security.fixtures import get_case_by_identifier
+    c = get_case_by_identifier(case_id)
+    if not c:
+        raise HTTPException(404, f"Demonstration case '{case_id}' not found")
+    return c
+
+@router.get('/tenants')
 def tenants(): return db.list_tenants()
 
 @public_router.get('/db/status')

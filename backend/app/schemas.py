@@ -107,3 +107,14 @@ class LoginResponse(BaseModel):
     token: str
     user: UserOut
     message: str
+
+
+# ─── PR Security & Combined Matrix Schemas ───────────────────────────────────
+
+CombinedGateStatus = Literal[
+    "ELIGIBLE_FOR_REVIEW",
+    "BLOCKED_SECURITY",
+    "BLOCKED_RELIABILITY",
+    "BLOCKED_BOTH",
+    "BLOCKED_CHECKS_INCOMPLETE",
+]

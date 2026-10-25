@@ -30,5 +30,21 @@
   "status": "open",
   "project_id": "e-commerce-platform",
   "source": "demo"
+ },
+ {
+  "id": 21,
+  "title": "Add payment gateway webhook handler",
+  "author": "dev-security",
+  "status": "open",
+  "project_id": "checkout",
+  "source": "demo"
+ },
+ {
+  "id": 22,
+  "title": "Unbounded retry client with credentials",
+  "author": "dev-security",
+  "status": "open",
+  "project_id": "checkout",
+  "source": "demo"
  }
 ]
