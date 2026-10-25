@@ -1,0 +1,151 @@
+{
+  "case_id": "case_5_checks_incomplete",
+  "name": "Case 5: Pipeline Checks Incomplete",
+  "description": "Scanner crash or simulation execution error. Gate deterministically halts at BLOCKED_CHECKS_INCOMPLETE.",
+  "pr_id": 23,
+  "title": "Pipeline fault execution demo",
+  "author": "dev-ops",
+  "project_id": "checkout",
+  "diff": "",
+  "expected_reliability": "INCOMPLETE",
+  "expected_security": "INCOMPLETE",
+  "expected_combined_status": "BLOCKED_CHECKS_INCOMPLETE",
+  "eligible_for_review": false,
+  "reliability": {
+    "id": 23,
+    "score_base": 84,
+    "score_pr": 0,
+    "verdict": "error",
+    "findings": [],
+    "diff": "",
+    "comment": "Simulation failed to execute: service container timed out."
+  },
+  "security": {
+    "scan_id": "sec-demo-23-incomplete",
+    "pr_id": 23,
+    "tenant_id": "demo",
+    "commit_or_patch_hash": "deadbeef",
+    "timestamp": "2026-10-25T00:00:00Z",
+    "policy_version": "1.1.0",
+    "scanners": [
+      {
+        "scanner": "bandit",
+        "status": "failed",
+        "version": null,
+        "duration_ms": 0.0,
+        "findings_count": 0,
+        "error_message": "Subprocess crashed with exit code 137 (OOM killed)."
+      }
+    ],
+    "findings": [],
+    "policy": {
+      "verdict": "INCOMPLETE",
+      "passed": false,
+      "blocking_findings_count": 0,
+      "informational_findings_count": 0,
+      "critical_count": 0,
+      "high_count": 0,
+      "medium_count": 0,
+      "low_count": 0,
+      "info_count": 0,
+      "exposed_secrets_count": 0,
+      "vulnerable_dependencies_count": 0,
+      "new_findings_count": 0,
+      "pre_existing_findings_count": 0,
+      "new_blocking_count": 0,
+      "pre_existing_blocking_count": 0,
+      "blocking_reasons": [],
+      "failed_scanners": [],
+      "missing_required_scanners": [],
+      "summary": "Required scanner 'bandit' failed to execute.",
+      "policy_version": "1.1.0"
+    },
+    "is_clean": false,
+    "has_failures": true,
+    "remediation_patch": null
+  },
+  "combined": {
+    "pr_id": 23,
+    "tenant_id": "demo",
+    "timestamp": "2026-10-25T03:51:46.937546+00:00",
+    "combined_status": "BLOCKED_CHECKS_INCOMPLETE",
+    "eligible_for_review": false,
+    "automatic_merge_authorized": false,
+    "review_signoff_required": true,
+    "all_checks_completed": false,
+    "reliability": {
+      "status": "INCOMPLETE",
+      "score": 0,
+      "score_base": 84,
+      "verdict": "error",
+      "findings_count": 0,
+      "report": {
+        "id": 23,
+        "score_base": 84,
+        "score_pr": 0,
+        "verdict": "error",
+        "findings": [],
+        "diff": "",
+        "comment": "Simulation failed to execute: service container timed out."
+      }
+    },
+    "security": {
+      "status": "INCOMPLETE",
+      "blocking_findings_count": 0,
+      "critical_count": 0,
+      "high_count": 0,
+      "secrets_count": 0,
+      "policy_verdict": "INCOMPLETE",
+      "report": {
+        "scan_id": "sec-demo-23-incomplete",
+        "pr_id": 23,
+        "tenant_id": "demo",
+        "commit_or_patch_hash": "deadbeef",
+        "timestamp": "2026-10-25T00:00:00Z",
+        "policy_version": "1.1.0",
+        "scanners": [
+          {
+            "scanner": "bandit",
+            "status": "failed",
+            "version": null,
+            "duration_ms": 0.0,
+            "findings_count": 0,
+            "error_message": "Subprocess crashed with exit code 137 (OOM killed)."
+          }
+        ],
+        "findings": [],
+        "policy": {
+          "verdict": "INCOMPLETE",
+          "passed": false,
+          "blocking_findings_count": 0,
+          "informational_findings_count": 0,
+          "critical_count": 0,
+          "high_count": 0,
+          "medium_count": 0,
+          "low_count": 0,
+          "info_count": 0,
+          "exposed_secrets_count": 0,
+          "vulnerable_dependencies_count": 0,
+          "new_findings_count": 0,
+          "pre_existing_findings_count": 0,
+          "new_blocking_count": 0,
+          "pre_existing_blocking_count": 0,
+          "blocking_reasons": [],
+          "failed_scanners": [],
+          "missing_required_scanners": [],
+          "summary": "Required scanner 'bandit' failed to execute.",
+          "policy_version": "1.1.0"
+        },
+        "is_clean": false,
+        "has_failures": true,
+        "remediation_patch": null
+      }
+    },
+    "machine_readable_reasons": [
+      "RELIABILITY_INCOMPLETE: Reliability simulation or fault analysis failed to execute.",
+      "SECURITY_INCOMPLETE: Required security scanners or test suite failed to complete.",
+      "DECISION_GATE: All mandatory checks must complete before review eligibility."
+    ],
+    "decision_summary": "Verification BLOCKED: One or more required reliability or security checks are INCOMPLETE. PR cannot be evaluated for review until all scanners complete."
+  }
+}

@@ -122,6 +122,22 @@ def combined_verification(pr_id: int, tenant_id: str = Depends(current_tenant)):
     res = verify_pr_combined(pr_id, tenant_id=tenant_id)
     return res.model_dump()
 
+@router.get('/pr/demo-cases/all')
+@router.get('/pr-demo-cases')
+def list_demo_cases():
+    """Retrieve all four reproducible reliability/security demonstration cases + incomplete demo."""
+    from .security.fixtures import get_all_four_cases
+    return get_all_four_cases()
+
+@router.get('/pr/demo-cases/{case_id}')
+def get_demo_case(case_id: str):
+    """Retrieve a specific reproducible demonstration case by ID or alias."""
+    from .security.fixtures import get_case_by_identifier
+    c = get_case_by_identifier(case_id)
+    if not c:
+        raise HTTPException(404, f"Demonstration case '{case_id}' not found")
+    return c
+
 @router.get('/tenants')
 def tenants(): return db.list_tenants()
 

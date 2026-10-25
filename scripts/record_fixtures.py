@@ -16,6 +16,7 @@ from backend.app.intel.runtime.predictor import what_if
 from backend.app.intel.runtime.scoring import resilience_score
 from backend.app.pr.prs import list_prs
 from backend.app.pr.service import analyze_pr, heal_pr
+from backend.app.security.fixtures import export_fixtures_to_disk
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "fixtures"
@@ -61,6 +62,7 @@ def main():
     write("pr.safe.analyze.json", analyze_pr(13))
     write("pr.risky.heal.json", heal_pr(12))
     write("whatif.db_latency.json", [what_if(BASE_EDGES, "db_latency", f) for f in [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]])
+    export_fixtures_to_disk(OUT, FRONT if FRONT.exists() else None)
     print(f"Fixtures written to {OUT}" + (f" and {FRONT}" if FRONT.exists() else ""))
 
 

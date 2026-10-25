@@ -1,0 +1,327 @@
+{
+  "case_id": "case_3_rel_fail_sec_pass",
+  "name": "Case 3: Reliability Regression with Clean Security",
+  "description": "Removes timeouts and circuit breaker on order->inventory edge causing severe resilience drop to 32/100. Security scan clean.",
+  "pr_id": 12,
+  "title": "Refactor inventory client",
+  "author": "dev-a",
+  "project_id": "checkout",
+  "diff": "--- a/order-service/config.yaml\n+++ b/order-service/config.yaml\n@@ -7,6 +7,5 @@ client:\n   inventory:\n-    timeout_ms: 700\n-    retries: 1\n-    circuit_breaker: true\n-    fallback: true\n+    retries: 4\n+    circuit_breaker: false\n+    fallback: false",
+  "expected_reliability": "FAIL",
+  "expected_security": "PASS",
+  "expected_combined_status": "BLOCKED_RELIABILITY",
+  "eligible_for_review": false,
+  "reliability": {
+    "id": 12,
+    "score_base": 84,
+    "score_pr": 32,
+    "verdict": "regression",
+    "per_scenario": [
+      {
+        "scenario": "db_latency",
+        "base": {
+          "p95_ms": 628,
+          "error_rate": 0.004
+        },
+        "pr": {
+          "p95_ms": 3000,
+          "error_rate": 0.929
+        }
+      },
+      {
+        "scenario": "service_down",
+        "base": {
+          "p95_ms": 369,
+          "error_rate": 0.0
+        },
+        "pr": {
+          "p95_ms": 206,
+          "error_rate": 1.0
+        }
+      },
+      {
+        "scenario": "traffic_spike",
+        "base": {
+          "p95_ms": 2018,
+          "error_rate": 0.028
+        },
+        "pr": {
+          "p95_ms": 2018,
+          "error_rate": 0.028
+        }
+      }
+    ],
+    "findings": [
+      {
+        "rule": "R1_TIMEOUT",
+        "severity": "high",
+        "edge": "order->inventory",
+        "message": "No effective timeout on order -> inventory; callers can hang until the gateway gives up.",
+        "evidence": "timeout_ms: null"
+      },
+      {
+        "rule": "R2_RETRY_STORM",
+        "severity": "high",
+        "edge": "order->inventory",
+        "message": "4 retries without backoff multiplies load on a struggling dependency.",
+        "evidence": "retries: 4"
+      },
+      {
+        "rule": "R3_NO_FALLBACK",
+        "severity": "medium",
+        "edge": "order->inventory",
+        "message": "No circuit breaker or fallback on order -> inventory.",
+        "evidence": "breaker: false, fallback: false"
+      }
+    ],
+    "cascade_path": [
+      "database",
+      "inventory",
+      "order",
+      "gateway",
+      "frontend"
+    ],
+    "diff": "--- a/order-service/config.yaml\n+++ b/order-service/config.yaml\n@@ -7,6 +7,5 @@ client:\n   inventory:\n-    timeout_ms: 700\n-    retries: 1\n-    circuit_breaker: true\n-    fallback: true\n+    retries: 4\n+    circuit_breaker: false\n+    fallback: false",
+    "comment": "### FLOWGUARD Resilience Check\n**Regression.** Resilience 84 -> 32\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 3000 ms / 92.9% |\n| Service down | 369 ms / 0.0% | 206 ms / 100.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: No effective timeout on order -> inventory; callers can hang until the gateway gives up.\nCascade: Database -> Inventory -> Order -> Gateway -> Frontend\n\nSuggested fix: restore timeout_ms 700, bound retries to 1, re-enable breaker and fallback."
+  },
+  "security": {
+    "scan_id": "sec-12-39b3a31e-1792900303",
+    "pr_id": 12,
+    "tenant_id": "demo",
+    "commit_or_patch_hash": "39b3a31e54631b6b8224c289b634335a966109bfa570dda1aa6aaeca73c368f2",
+    "timestamp": "2026-10-25T03:51:43.920757+00:00",
+    "policy_version": "1.1.0",
+    "scanners": [
+      {
+        "scanner": "flowguard-secrets",
+        "status": "completed",
+        "version": null,
+        "duration_ms": 0.06,
+        "findings_count": 0,
+        "error_message": null
+      },
+      {
+        "scanner": "bandit",
+        "status": "completed",
+        "version": null,
+        "duration_ms": 1380.21,
+        "findings_count": 0,
+        "error_message": null
+      },
+      {
+        "scanner": "gitleaks",
+        "status": "unavailable",
+        "version": null,
+        "duration_ms": 17.58,
+        "findings_count": 0,
+        "error_message": "Executable 'gitleaks' not found on system PATH."
+      },
+      {
+        "scanner": "semgrep",
+        "status": "unavailable",
+        "version": null,
+        "duration_ms": 16.78,
+        "findings_count": 0,
+        "error_message": "Executable 'semgrep' not found on system PATH."
+      }
+    ],
+    "findings": [],
+    "policy": {
+      "verdict": "PASS",
+      "passed": true,
+      "blocking_findings_count": 0,
+      "informational_findings_count": 0,
+      "critical_count": 0,
+      "high_count": 0,
+      "medium_count": 0,
+      "low_count": 0,
+      "info_count": 0,
+      "exposed_secrets_count": 0,
+      "vulnerable_dependencies_count": 0,
+      "new_findings_count": 0,
+      "pre_existing_findings_count": 0,
+      "new_blocking_count": 0,
+      "pre_existing_blocking_count": 0,
+      "blocking_reasons": [],
+      "failed_scanners": [],
+      "missing_required_scanners": [],
+      "summary": "Security Policy PASS: Clean scan with zero security findings across all configured scanners.",
+      "policy_version": "1.1.0"
+    },
+    "is_clean": true,
+    "has_failures": false,
+    "remediation_patch": null
+  },
+  "combined": {
+    "pr_id": 12,
+    "tenant_id": "demo",
+    "timestamp": "2026-10-25T03:51:45.338760+00:00",
+    "combined_status": "BLOCKED_RELIABILITY",
+    "eligible_for_review": false,
+    "automatic_merge_authorized": false,
+    "review_signoff_required": true,
+    "all_checks_completed": true,
+    "reliability": {
+      "status": "FAIL",
+      "score": 32,
+      "score_base": 84,
+      "verdict": "regression",
+      "findings_count": 3,
+      "report": {
+        "id": 12,
+        "score_base": 84,
+        "score_pr": 32,
+        "verdict": "regression",
+        "per_scenario": [
+          {
+            "scenario": "db_latency",
+            "base": {
+              "p95_ms": 628,
+              "error_rate": 0.004
+            },
+            "pr": {
+              "p95_ms": 3000,
+              "error_rate": 0.929
+            }
+          },
+          {
+            "scenario": "service_down",
+            "base": {
+              "p95_ms": 369,
+              "error_rate": 0.0
+            },
+            "pr": {
+              "p95_ms": 206,
+              "error_rate": 1.0
+            }
+          },
+          {
+            "scenario": "traffic_spike",
+            "base": {
+              "p95_ms": 2018,
+              "error_rate": 0.028
+            },
+            "pr": {
+              "p95_ms": 2018,
+              "error_rate": 0.028
+            }
+          }
+        ],
+        "findings": [
+          {
+            "rule": "R1_TIMEOUT",
+            "severity": "high",
+            "edge": "order->inventory",
+            "message": "No effective timeout on order -> inventory; callers can hang until the gateway gives up.",
+            "evidence": "timeout_ms: null"
+          },
+          {
+            "rule": "R2_RETRY_STORM",
+            "severity": "high",
+            "edge": "order->inventory",
+            "message": "4 retries without backoff multiplies load on a struggling dependency.",
+            "evidence": "retries: 4"
+          },
+          {
+            "rule": "R3_NO_FALLBACK",
+            "severity": "medium",
+            "edge": "order->inventory",
+            "message": "No circuit breaker or fallback on order -> inventory.",
+            "evidence": "breaker: false, fallback: false"
+          }
+        ],
+        "cascade_path": [
+          "database",
+          "inventory",
+          "order",
+          "gateway",
+          "frontend"
+        ],
+        "diff": "--- a/order-service/config.yaml\n+++ b/order-service/config.yaml\n@@ -7,6 +7,5 @@ client:\n   inventory:\n-    timeout_ms: 700\n-    retries: 1\n-    circuit_breaker: true\n-    fallback: true\n+    retries: 4\n+    circuit_breaker: false\n+    fallback: false",
+        "comment": "### FLOWGUARD Resilience Check\n**Regression.** Resilience 84 -> 32\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 3000 ms / 92.9% |\n| Service down | 369 ms / 0.0% | 206 ms / 100.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: No effective timeout on order -> inventory; callers can hang until the gateway gives up.\nCascade: Database -> Inventory -> Order -> Gateway -> Frontend\n\nSuggested fix: restore timeout_ms 700, bound retries to 1, re-enable breaker and fallback."
+      }
+    },
+    "security": {
+      "status": "PASS",
+      "blocking_findings_count": 0,
+      "critical_count": 0,
+      "high_count": 0,
+      "secrets_count": 0,
+      "policy_verdict": "PASS",
+      "report": {
+        "scan_id": "sec-12-39b3a31e-1792900303",
+        "pr_id": 12,
+        "tenant_id": "demo",
+        "commit_or_patch_hash": "39b3a31e54631b6b8224c289b634335a966109bfa570dda1aa6aaeca73c368f2",
+        "timestamp": "2026-10-25T03:51:43.920757+00:00",
+        "policy_version": "1.1.0",
+        "scanners": [
+          {
+            "scanner": "flowguard-secrets",
+            "status": "completed",
+            "version": null,
+            "duration_ms": 0.06,
+            "findings_count": 0,
+            "error_message": null
+          },
+          {
+            "scanner": "bandit",
+            "status": "completed",
+            "version": null,
+            "duration_ms": 1380.21,
+            "findings_count": 0,
+            "error_message": null
+          },
+          {
+            "scanner": "gitleaks",
+            "status": "unavailable",
+            "version": null,
+            "duration_ms": 17.58,
+            "findings_count": 0,
+            "error_message": "Executable 'gitleaks' not found on system PATH."
+          },
+          {
+            "scanner": "semgrep",
+            "status": "unavailable",
+            "version": null,
+            "duration_ms": 16.78,
+            "findings_count": 0,
+            "error_message": "Executable 'semgrep' not found on system PATH."
+          }
+        ],
+        "findings": [],
+        "policy": {
+          "verdict": "PASS",
+          "passed": true,
+          "blocking_findings_count": 0,
+          "informational_findings_count": 0,
+          "critical_count": 0,
+          "high_count": 0,
+          "medium_count": 0,
+          "low_count": 0,
+          "info_count": 0,
+          "exposed_secrets_count": 0,
+          "vulnerable_dependencies_count": 0,
+          "new_findings_count": 0,
+          "pre_existing_findings_count": 0,
+          "new_blocking_count": 0,
+          "pre_existing_blocking_count": 0,
+          "blocking_reasons": [],
+          "failed_scanners": [],
+          "missing_required_scanners": [],
+          "summary": "Security Policy PASS: Clean scan with zero security findings across all configured scanners.",
+          "policy_version": "1.1.0"
+        },
+        "is_clean": true,
+        "has_failures": false,
+        "remediation_patch": null
+      }
+    },
+    "machine_readable_reasons": [
+      "RELIABILITY_FAIL: Resilience score 32/84 indicates service regression (3 architectural fault findings).",
+      "SECURITY_PASS: Clean scan with zero blocking security flaws.",
+      "RELIABILITY_GATE: Auto-Fix or configuration remediation required to recover baseline score."
+    ],
+    "decision_summary": "Verification BLOCKED by Reliability Gate: Resilience score dropped to 32/100 (baseline 84). Security checks passed, but reliability regression blocks merge eligibility."
+  }
+}

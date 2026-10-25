@@ -10,6 +10,11 @@ from .combined import (
     evaluate_combined_matrix,
     verify_pr_combined,
 )
+from .fixtures import (
+    export_fixtures_to_disk,
+    get_all_four_cases,
+    get_case_by_identifier,
+)
 from .models import (
     FindingCategory,
     NormalizedFinding,
@@ -37,6 +42,9 @@ __all__ = [
     "SeverityLevel",
     "evaluate_combined_matrix",
     "evaluate_security_policy",
+    "export_fixtures_to_disk",
+    "get_all_four_cases",
+    "get_case_by_identifier",
     "mask_secret",
     "redact_text",
     "revalidate_patch",

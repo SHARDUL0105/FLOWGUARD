@@ -63,6 +63,26 @@ DIFF_PR_12_FIX: str = """--- a/order-service/config.yaml
 -    circuit_breaker: false
 -    fallback: false"""
 
+DIFF_PR_21: str = """--- a/order-service/webhook.py
++++ b/order-service/webhook.py
+@@ -1,5 +1,8 @@
+ # Order service payment webhook dispatcher
+ import os
++
++# Hardcoded webhook verification token
++api_key = "flowguard_demo_token_sec_6677889900"
++
+ def verify_signature(payload, sig):"""
+
+DIFF_PR_22: str = """--- a/order-service/config.yaml
++++ b/order-service/config.yaml
+@@ -7,5 +7,7 @@ client:
+   inventory:
++    retries: 4
++    circuit_breaker: false
++    fallback: false
++    auth_token: "flowguard_demo_token_sec_1122334455" """
+
 DEMO_PRS: Dict[str, Dict[str, Any]] = {
     "12": {
         "id": 12,
@@ -123,6 +143,30 @@ DEMO_PRS: Dict[str, Dict[str, Any]] = {
         "target_edge": ("order", "inventory"),
         "base_edge": RISKY_ORDER_INVENTORY_EDGE,
         "pr_edge": FIXED_ORDER_INVENTORY_EDGE,
+    },
+    "21": {
+        "id": 21,
+        "title": "Add payment gateway webhook handler",
+        "author": "dev-security",
+        "status": "open",
+        "project_id": "checkout",
+        "description": "Demonstrates Case 2: Reliability PASS (score 84) + Security FAIL (secret leak in diff)",
+        "diff": DIFF_PR_21,
+        "target_edge": None,
+        "base_edge": None,
+        "pr_edge": None,
+    },
+    "22": {
+        "id": 22,
+        "title": "Unbounded retry client with credentials",
+        "author": "dev-security",
+        "status": "open",
+        "project_id": "checkout",
+        "description": "Demonstrates Case 4: Reliability FAIL (score 32) + Security FAIL (risky edge + secret leak)",
+        "diff": DIFF_PR_22,
+        "target_edge": ("order", "inventory"),
+        "base_edge": BASE_ORDER_INVENTORY_EDGE,
+        "pr_edge": RISKY_ORDER_INVENTORY_EDGE,
     },
 }
 
@@ -225,7 +269,7 @@ def pr_edges(pr_id: Union[int, str]) -> Dict[Tuple[str, str], Dict[str, Any]]:
     edges = copy.deepcopy(BASE_EDGES)
     key = _normalize_pr_id(pr_id)
 
-    if key == "12":
+    if key in ("12", "22"):
         edges[("order", "inventory")].update(copy.deepcopy(RISKY_ORDER_INVENTORY_EDGE))
     elif key in ("12-fix", "12_fix", "fix-12"):
         edges[("order", "inventory")].update(copy.deepcopy(FIXED_ORDER_INVENTORY_EDGE))

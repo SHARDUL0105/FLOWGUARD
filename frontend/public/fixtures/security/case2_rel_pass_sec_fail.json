@@ -1,0 +1,311 @@
+{
+  "case_id": "case_2_rel_pass_sec_fail",
+  "name": "Case 2: Clean Reliability with Security Vulnerability",
+  "description": "Safe edge configuration maintaining baseline resilience (score 84), but introduces an exposed API credential in webhook handler diff.",
+  "pr_id": 21,
+  "title": "Add payment gateway webhook handler",
+  "author": "dev-security",
+  "project_id": "checkout",
+  "diff": "--- a/order-service/webhook.py\n+++ b/order-service/webhook.py\n@@ -1,5 +1,8 @@\n # Order service payment webhook dispatcher\n import os\n+\n+# Hardcoded webhook verification token\n+api_key = \"flowguard_demo_token_sec_6677889900\"\n+\n def verify_signature(payload, sig):",
+  "expected_reliability": "PASS",
+  "expected_security": "FAIL",
+  "expected_combined_status": "BLOCKED_SECURITY",
+  "eligible_for_review": false,
+  "reliability": {
+    "id": 21,
+    "score_base": 84,
+    "score_pr": 84,
+    "verdict": "pass",
+    "per_scenario": [
+      {
+        "scenario": "db_latency",
+        "base": {
+          "p95_ms": 628,
+          "error_rate": 0.004
+        },
+        "pr": {
+          "p95_ms": 628,
+          "error_rate": 0.004
+        }
+      },
+      {
+        "scenario": "service_down",
+        "base": {
+          "p95_ms": 369,
+          "error_rate": 0.0
+        },
+        "pr": {
+          "p95_ms": 369,
+          "error_rate": 0.0
+        }
+      },
+      {
+        "scenario": "traffic_spike",
+        "base": {
+          "p95_ms": 2018,
+          "error_rate": 0.028
+        },
+        "pr": {
+          "p95_ms": 2018,
+          "error_rate": 0.028
+        }
+      }
+    ],
+    "findings": [],
+    "cascade_path": [],
+    "diff": "--- a/order-service/webhook.py\n+++ b/order-service/webhook.py\n@@ -1,5 +1,8 @@\n # Order service payment webhook dispatcher\n import os\n+\n+# Hardcoded webhook verification token\n+api_key = \"flowguard_demo_token_sec_6677889900\"\n+\n def verify_signature(payload, sig):",
+    "comment": "### FLOWGUARD Resilience Check\n**Pass.** Resilience 84 -> 84\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 628 ms / 0.4% |\n| Service down | 369 ms / 0.0% | 369 ms / 0.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: None (no configuration risks identified).\nCascade: None (no cascading failure observed).\n\nSuggested fix: None required. Pull request maintains baseline resilience."
+  },
+  "security": {
+    "scan_id": "sec-21-786976ab-1792900301",
+    "pr_id": 21,
+    "tenant_id": "demo",
+    "commit_or_patch_hash": "786976ab484e1c0d6a4dd68c0329c01d6f1f2d1bf7a8b361087883867848b04b",
+    "timestamp": "2026-10-25T03:51:41.999679+00:00",
+    "policy_version": "1.1.0",
+    "scanners": [
+      {
+        "scanner": "flowguard-secrets",
+        "status": "completed",
+        "version": null,
+        "duration_ms": 0.15,
+        "findings_count": 1,
+        "error_message": null
+      },
+      {
+        "scanner": "bandit",
+        "status": "completed",
+        "version": null,
+        "duration_ms": 1633.84,
+        "findings_count": 0,
+        "error_message": null
+      },
+      {
+        "scanner": "gitleaks",
+        "status": "unavailable",
+        "version": null,
+        "duration_ms": 22.95,
+        "findings_count": 0,
+        "error_message": "Executable 'gitleaks' not found on system PATH."
+      },
+      {
+        "scanner": "semgrep",
+        "status": "unavailable",
+        "version": null,
+        "duration_ms": 27.29,
+        "findings_count": 0,
+        "error_message": "Executable 'semgrep' not found on system PATH."
+      }
+    ],
+    "findings": [
+      {
+        "id": "find-sec-secret-006-88ea1bb9961e",
+        "scanner": "flowguard-secrets",
+        "rule_id": "SEC-SECRET-006",
+        "category": "secret",
+        "severity": "high",
+        "title": "Hardcoded Plaintext Password or Token Assignment",
+        "explanation": "A variable assignment contains a plaintext password or API token.",
+        "file_path": "order-service/webhook.py",
+        "line_number": 5,
+        "remediation": "Refactor configuration to read passwords from environment variables or a configuration server.",
+        "confidence": "high",
+        "package_name": null,
+        "advisory_id": null,
+        "is_new": true,
+        "raw_snippet": "api_key: [REDACTED]"
+      }
+    ],
+    "policy": {
+      "verdict": "FAIL",
+      "passed": false,
+      "blocking_findings_count": 1,
+      "informational_findings_count": 0,
+      "critical_count": 0,
+      "high_count": 1,
+      "medium_count": 0,
+      "low_count": 0,
+      "info_count": 0,
+      "exposed_secrets_count": 1,
+      "vulnerable_dependencies_count": 0,
+      "new_findings_count": 1,
+      "pre_existing_findings_count": 0,
+      "new_blocking_count": 1,
+      "pre_existing_blocking_count": 0,
+      "blocking_reasons": [
+        "[NEW] Exposed secret violation: Hardcoded Plaintext Password or Token Assignment (SEC-SECRET-006) at order-service/webhook.py:5"
+      ],
+      "failed_scanners": [],
+      "missing_required_scanners": [],
+      "summary": "Security Policy FAIL: 1 blocking vulnerabilities detected (1 new, 0 pre-existing). Secrets: 1, Critical: 0, High: 1.",
+      "policy_version": "1.1.0"
+    },
+    "is_clean": false,
+    "has_failures": false,
+    "remediation_patch": null
+  },
+  "combined": {
+    "pr_id": 21,
+    "tenant_id": "demo",
+    "timestamp": "2026-10-25T03:51:43.687216+00:00",
+    "combined_status": "BLOCKED_SECURITY",
+    "eligible_for_review": false,
+    "automatic_merge_authorized": false,
+    "review_signoff_required": true,
+    "all_checks_completed": true,
+    "reliability": {
+      "status": "PASS",
+      "score": 84,
+      "score_base": 84,
+      "verdict": "pass",
+      "findings_count": 0,
+      "report": {
+        "id": 21,
+        "score_base": 84,
+        "score_pr": 84,
+        "verdict": "pass",
+        "per_scenario": [
+          {
+            "scenario": "db_latency",
+            "base": {
+              "p95_ms": 628,
+              "error_rate": 0.004
+            },
+            "pr": {
+              "p95_ms": 628,
+              "error_rate": 0.004
+            }
+          },
+          {
+            "scenario": "service_down",
+            "base": {
+              "p95_ms": 369,
+              "error_rate": 0.0
+            },
+            "pr": {
+              "p95_ms": 369,
+              "error_rate": 0.0
+            }
+          },
+          {
+            "scenario": "traffic_spike",
+            "base": {
+              "p95_ms": 2018,
+              "error_rate": 0.028
+            },
+            "pr": {
+              "p95_ms": 2018,
+              "error_rate": 0.028
+            }
+          }
+        ],
+        "findings": [],
+        "cascade_path": [],
+        "diff": "--- a/order-service/webhook.py\n+++ b/order-service/webhook.py\n@@ -1,5 +1,8 @@\n # Order service payment webhook dispatcher\n import os\n+\n+# Hardcoded webhook verification token\n+api_key = \"flowguard_demo_token_sec_6677889900\"\n+\n def verify_signature(payload, sig):",
+        "comment": "### FLOWGUARD Resilience Check\n**Pass.** Resilience 84 -> 84\n\n| Scenario | Base (p95 / errors) | This PR |\n|---|---|---|\n| Database latency | 628 ms / 0.4% | 628 ms / 0.4% |\n| Service down | 369 ms / 0.0% | 369 ms / 0.0% |\n| Traffic spike | 2018 ms / 2.8% | 2018 ms / 2.8% |\n\nTop finding: None (no configuration risks identified).\nCascade: None (no cascading failure observed).\n\nSuggested fix: None required. Pull request maintains baseline resilience."
+      }
+    },
+    "security": {
+      "status": "FAIL",
+      "blocking_findings_count": 1,
+      "critical_count": 0,
+      "high_count": 1,
+      "secrets_count": 1,
+      "policy_verdict": "FAIL",
+      "report": {
+        "scan_id": "sec-21-786976ab-1792900301",
+        "pr_id": 21,
+        "tenant_id": "demo",
+        "commit_or_patch_hash": "786976ab484e1c0d6a4dd68c0329c01d6f1f2d1bf7a8b361087883867848b04b",
+        "timestamp": "2026-10-25T03:51:41.999679+00:00",
+        "policy_version": "1.1.0",
+        "scanners": [
+          {
+            "scanner": "flowguard-secrets",
+            "status": "completed",
+            "version": null,
+            "duration_ms": 0.15,
+            "findings_count": 1,
+            "error_message": null
+          },
+          {
+            "scanner": "bandit",
+            "status": "completed",
+            "version": null,
+            "duration_ms": 1633.84,
+            "findings_count": 0,
+            "error_message": null
+          },
+          {
+            "scanner": "gitleaks",
+            "status": "unavailable",
+            "version": null,
+            "duration_ms": 22.95,
+            "findings_count": 0,
+            "error_message": "Executable 'gitleaks' not found on system PATH."
+          },
+          {
+            "scanner": "semgrep",
+            "status": "unavailable",
+            "version": null,
+            "duration_ms": 27.29,
+            "findings_count": 0,
+            "error_message": "Executable 'semgrep' not found on system PATH."
+          }
+        ],
+        "findings": [
+          {
+            "id": "find-sec-secret-006-88ea1bb9961e",
+            "scanner": "flowguard-secrets",
+            "rule_id": "SEC-SECRET-006",
+            "category": "secret",
+            "severity": "high",
+            "title": "Hardcoded Plaintext Password or Token Assignment",
+            "explanation": "A variable assignment contains a plaintext password or API token.",
+            "file_path": "order-service/webhook.py",
+            "line_number": 5,
+            "remediation": "Refactor configuration to read passwords from environment variables or a configuration server.",
+            "confidence": "high",
+            "package_name": null,
+            "advisory_id": null,
+            "is_new": true,
+            "raw_snippet": "api_key: [REDACTED]"
+          }
+        ],
+        "policy": {
+          "verdict": "FAIL",
+          "passed": false,
+          "blocking_findings_count": 1,
+          "informational_findings_count": 0,
+          "critical_count": 0,
+          "high_count": 1,
+          "medium_count": 0,
+          "low_count": 0,
+          "info_count": 0,
+          "exposed_secrets_count": 1,
+          "vulnerable_dependencies_count": 0,
+          "new_findings_count": 1,
+          "pre_existing_findings_count": 0,
+          "new_blocking_count": 1,
+          "pre_existing_blocking_count": 0,
+          "blocking_reasons": [
+            "[NEW] Exposed secret violation: Hardcoded Plaintext Password or Token Assignment (SEC-SECRET-006) at order-service/webhook.py:5"
+          ],
+          "failed_scanners": [],
+          "missing_required_scanners": [],
+          "summary": "Security Policy FAIL: 1 blocking vulnerabilities detected (1 new, 0 pre-existing). Secrets: 1, Critical: 0, High: 1.",
+          "policy_version": "1.1.0"
+        },
+        "is_clean": false,
+        "has_failures": false,
+        "remediation_patch": null
+      }
+    },
+    "machine_readable_reasons": [
+      "RELIABILITY_PASS: Resilience score 84/84 meets baseline.",
+      "SECURITY_FAIL: Security policy blocked with 1 blocking flaw(s) (1 secrets, 0 critical, 1 high).",
+      "POLICY_OVERRIDE_PREVENTION: High resilience score CANNOT cancel out or override security violations."
+    ],
+    "decision_summary": "Verification BLOCKED by Security Policy: 1 blocking vulnerability detected. Resilience score (84) does not override security failures. Merge blocked."
+  }
+}
