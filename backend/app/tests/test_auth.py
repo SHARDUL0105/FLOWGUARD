@@ -1,6 +1,25 @@
 """Tests for FLOWGUARD Real Authentication & RBAC."""
+import base64
+import hashlib
+import hmac
+import json
 import pytest
 from backend.app import auth
+
+
+def test_production_requires_configured_signing_key():
+    with pytest.raises(RuntimeError, match="AUTH_SECRET_KEY must be configured in production"):
+        auth._load_secret_key(None, "production")
+
+    with pytest.raises(RuntimeError, match="at least 32 bytes in production"):
+        auth._load_secret_key("short", "production")
+
+
+def test_development_keeps_ephemeral_key_behavior(monkeypatch):
+    monkeypatch.setattr(auth.secrets, "token_urlsafe", lambda _: "development-ephemeral-key")
+
+    assert auth._load_secret_key(None, "development") == "development-ephemeral-key"
+    assert auth._load_secret_key("configured-development-key", "development") == "configured-development-key"
 
 
 def test_hash_and_verify_password():
@@ -79,3 +98,32 @@ def test_token_creation_and_verification():
     # Tampered token fails
     tampered = token[:-4] + "abcd"
     assert auth.verify_token(tampered) is None
+
+    expired = auth.create_token(user, expires_in_seconds=-1)
+    assert auth.verify_token(expired) is None
+
+
+def test_token_verification_rejects_unsupported_algorithm():
+    user = {
+        "id": "u-test",
+        "username": "tester",
+        "email": "test@flowguard.io",
+        "role": "company_engineer",
+        "tenant_id": "demo",
+    }
+    header = {"alg": "none", "typ": "JWT"}
+    payload = {
+        "sub": user["id"],
+        "username": user["username"],
+        "email": user["email"],
+        "role": user["role"],
+        "tenant_id": user["tenant_id"],
+        "exp": 4_102_444_800,
+        "iat": 1_700_000_000,
+    }
+    encode = lambda value: base64.urlsafe_b64encode(json.dumps(value).encode()).decode().rstrip("=")
+    message = f"{encode(header)}.{encode(payload)}"
+    signature = hmac.new(auth.SECRET_KEY.encode(), message.encode(), hashlib.sha256).digest()
+    token = f"{message}.{base64.urlsafe_b64encode(signature).decode().rstrip('=')}"
+
+    assert auth.verify_token(token) is None

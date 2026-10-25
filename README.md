@@ -57,5 +57,14 @@ so the whole demo runs with the backend off.
 
 ## Multi-tenancy (shared collections)
 Every stored document carries `tenant_id` and `project_id`. Every read filters on `tenant_id` in one place (`backend/app/db.py`),
-and tenant ids are validated against the `tenants` collection. Prototype: the id is sent as the `X-Tenant-ID` header from an
-organization switcher. Production: it must come from the signed login token. Seeded tenants: demo, acme, beta.
+and tenant ids are validated against the `tenants` collection. The API requires a signed bearer token for protected routes;
+the authenticated account's tenant is authoritative, and a conflicting `X-Tenant-ID` is rejected. Health, topology, tenant
+discovery, DB status, login, registration, and super-admin profile discovery remain public. Registration creates engineer
+accounts only; listing tenant users requires an administrator role. The `/ws` socket requires the same token, sent in a
+`bearer.<token>` WebSocket subprotocol (or through an Authorization header/query token for non-browser clients).
+
+Set `AUTH_SECRET_KEY` to a unique random value of at least 32 bytes in production; startup fails if `APP_ENV=production` and
+the key is missing or too short. Local development generates an ephemeral key when this setting is empty, so issued tokens
+will not survive a backend restart. The API applies per-IP sliding-window
+limits: 5 login attempts/minute, 3 registrations/hour, 30 state-changing requests/minute, and 120 other API requests/minute.
+These limits are in-process and should be enforced at the gateway as well when running multiple backend workers.

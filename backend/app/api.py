@@ -19,15 +19,47 @@ from . import db
 from . import auth
 from .schemas import LoginRequest, RegisterRequest, LoginResponse, UserOut
 
-router=APIRouter(prefix="/api")
+def get_current_user(request: Request) -> dict:
+    """Authenticate a bearer token and resolve its current account."""
+    authorization = request.headers.get("Authorization", "")
+    scheme, _, token = authorization.partition(" ")
+    payload = auth.verify_token(token) if scheme.lower() == "bearer" and token else None
+    user = auth.get_user_by_id(payload["sub"]) if payload else None
+    if (
+        not user
+        or user["username"] != payload["username"]
+        or user["email"] != payload["email"]
+        or user["role"] != payload["role"]
+        or user["tenant_id"] != payload["tenant_id"]
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired authentication token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
 
-
-def current_tenant(x_tenant_id: str | None = Header(default=None)) -> str:
-    """Which organization is asking. Every stored read and write is scoped to this value."""
+def current_tenant(
+    x_tenant_id: str | None = Header(default=None),
+    user: dict = Depends(get_current_user),
+) -> str:
+    """Scope data to the authenticated user's tenant, rejecting header mismatches."""
     try:
-        return db.resolve_tenant(x_tenant_id)
+        tenant_id = db.resolve_tenant(user["tenant_id"])
+        if x_tenant_id and db.resolve_tenant(x_tenant_id) != tenant_id:
+            raise HTTPException(status_code=403, detail="Tenant header does not match the authenticated user.")
+        return tenant_id
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+def require_company_admin(user: dict = Depends(get_current_user)) -> dict:
+    if user["role"] not in {"company_admin", "platform_owner"}:
+        raise HTTPException(status_code=403, detail="Administrator role required.")
+    return user
+
+router = APIRouter(prefix="/api", dependencies=[Depends(get_current_user)])
+public_router = APIRouter(prefix="/api")
+websocket_router = APIRouter(prefix="/api")
 
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures"
 
@@ -52,9 +84,9 @@ def load_replay_fixture(scenario: str):
         data = json.load(f)
 
     return data
-@router.get('/topology')
+@public_router.get('/topology')
 def topology(): return topology_json()
-@router.get('/health')
+@public_router.get('/health')
 def health(): return {"ok":True,"mode":state.mode}
 @router.post('/chaos')
 async def chaos(body: ChaosRequest):
@@ -96,22 +128,22 @@ def delete_pr(pr_id: int, tenant_id: str = Depends(current_tenant)):
 
 @router.post('/pr/{pr_id}/analyze')
 def analyze(pr_id: int, tenant_id: str = Depends(current_tenant)):
-    r = analyze_pr(pr_id)
+    r = analyze_pr(pr_id, tenant_id)
     if r is None: raise HTTPException(404, f'Pull request #{pr_id} not found')
     db.save('pr_checks', r, tenant_id)
     return r
 
 @router.post('/pr/{pr_id}/heal')
 def heal(pr_id: int, tenant_id: str = Depends(current_tenant)):
-    r = heal_pr(pr_id)
+    r = heal_pr(pr_id, tenant_id)
     if r is None: raise HTTPException(404, f'Pull request #{pr_id} not found')
     db.save('heal_results', r, tenant_id)
     return r
 
-@router.get('/tenants')
+@public_router.get('/tenants')
 def tenants(): return db.list_tenants()
 
-@router.get('/db/status')
+@public_router.get('/db/status')
 def db_status(): return db.status()
 
 @router.get('/history')
@@ -305,9 +337,36 @@ def simulate_project(project_id: str, tenant_id: str = Depends(current_tenant)):
 
     return report
 
-@router.websocket("/ws")
+@websocket_router.websocket("/ws")
 async def websocket(ws: WebSocket):
-    await ws.accept()
+    authorization = ws.headers.get("Authorization", "")
+    scheme, _, header_token = authorization.partition(" ")
+    protocols = [
+        protocol.strip()
+        for protocol in ws.headers.get("Sec-WebSocket-Protocol", "").split(",")
+    ]
+    protocol_token = next(
+        (protocol[len("bearer."):] for protocol in protocols if protocol.startswith("bearer.")),
+        None,
+    )
+    token = ws.query_params.get("token") or protocol_token
+    if not token and scheme.lower() == "bearer":
+        token = header_token
+    payload = auth.verify_token(token) if token else None
+    user = auth.get_user_by_id(payload["sub"]) if payload else None
+    if (
+        not user
+        or user["username"] != payload["username"]
+        or user["email"] != payload["email"]
+        or user["role"] != payload["role"]
+        or user["tenant_id"] != payload["tenant_id"]
+    ):
+        await ws.close(code=1008, reason="Authentication required")
+        return
+    if "flowguard" in protocols:
+        await ws.accept(subprotocol="flowguard")
+    else:
+        await ws.accept()
     try:
         if state.mode == "replay":
             # Recorded runs are already TickMessage-shaped; stream them at 1 tick per second.
@@ -331,7 +390,7 @@ async def websocket(ws: WebSocket):
 
 # ─── Real Authentication & RBAC Routes ──────────────────────────────────────
 
-@router.post("/auth/login", response_model=LoginResponse)
+@public_router.post("/auth/login", response_model=LoginResponse)
 def login(body: LoginRequest):
     user = auth.authenticate_user(body.username_or_email, body.password, body.tenant_id)
     if not user:
@@ -354,14 +413,27 @@ def login(body: LoginRequest):
         "message": f"Successfully authenticated as {user['name']}"
     }
 
-@router.post("/auth/register", response_model=LoginResponse)
-def register(body: RegisterRequest):
+@public_router.post("/auth/register", response_model=LoginResponse)
+def register(
+    body: RegisterRequest,
+    admin: dict = Depends(require_company_admin),
+):
+    tenant_id = admin["tenant_id"]
+    if body.tenant_id.strip().lower() != tenant_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only register users in your authenticated tenant.",
+        )
+    try:
+        db.resolve_tenant(tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     try:
         user = auth.register_user(
             username=body.username,
             email=body.email,
             password=body.password,
-            tenant_id=body.tenant_id,
+            tenant_id=tenant_id,
             role=body.role or "company_engineer",
             name=body.name,
             title=body.title,
@@ -386,7 +458,7 @@ def register(body: RegisterRequest):
         "message": f"Account created successfully for {user['username']}"
     }
 
-@router.get("/auth/super-admins")
+@public_router.get("/auth/super-admins")
 def get_super_admins():
     """Return the official 4 Team CodeX Super Admins for hackathon judge evaluation."""
     return {
@@ -395,6 +467,9 @@ def get_super_admins():
     }
 
 @router.get("/auth/users")
-def get_users(tenant: str = Depends(current_tenant)):
+def get_users(
+    tenant: str = Depends(current_tenant),
+    _: dict = Depends(require_company_admin),
+):
     """Return users belonging to the current tenant."""
     return auth.list_users_for_tenant(tenant)
