@@ -4,6 +4,12 @@ patch revalidation, and audit report storage for pull requests.
 """
 from __future__ import annotations
 
+from .combined import (
+    CombinedStatus,
+    CombinedVerificationResult,
+    evaluate_combined_matrix,
+    verify_pr_combined,
+)
 from .models import (
     FindingCategory,
     NormalizedFinding,
@@ -19,6 +25,8 @@ from .redactor import mask_secret, redact_text
 from .revalidation import revalidate_patch
 
 __all__ = [
+    "CombinedStatus",
+    "CombinedVerificationResult",
     "DeterministicPolicyEvaluator",
     "FindingCategory",
     "NormalizedFinding",
@@ -27,9 +35,11 @@ __all__ = [
     "SecurityPolicyConfig",
     "SecurityScanReport",
     "SeverityLevel",
+    "evaluate_combined_matrix",
     "evaluate_security_policy",
     "mask_secret",
     "redact_text",
     "revalidate_patch",
     "scan_pr_security",
+    "verify_pr_combined",
 ]

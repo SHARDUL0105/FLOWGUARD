@@ -14,6 +14,7 @@ from .intel.runtime.predictor import what_if
 from .intel.runtime.scoring import resilience_score
 from .pr.prs import list_prs
 from .pr.service import analyze_pr, heal_pr
+from .security import scan_pr_security, verify_pr_combined
 from .ai.brief import build_evidence, stream_brief_events
 from . import db
 from . import auth
@@ -107,6 +108,19 @@ def heal(pr_id: int, tenant_id: str = Depends(current_tenant)):
     if r is None: raise HTTPException(404, f'Pull request #{pr_id} not found')
     db.save('heal_results', r, tenant_id)
     return r
+
+@router.post('/pr/{pr_id}/security/analyze')
+def analyze_security(pr_id: int, tenant_id: str = Depends(current_tenant)):
+    """Run independent static security scan on a pull request."""
+    r = scan_pr_security(pr_id, tenant_id=tenant_id)
+    return r.model_dump()
+
+@router.get('/pr/{pr_id}/combined')
+@router.post('/pr/{pr_id}/combined')
+def combined_verification(pr_id: int, tenant_id: str = Depends(current_tenant)):
+    """Evaluate unified PR gate combining reliability and security results."""
+    res = verify_pr_combined(pr_id, tenant_id=tenant_id)
+    return res.model_dump()
 
 @router.get('/tenants')
 def tenants(): return db.list_tenants()
