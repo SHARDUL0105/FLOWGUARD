@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import SiteNav from "@/components/layout/SiteNav";
-import SignInModal from "@/components/auth/SignInModal";
+import AdminSignInModal from "@/components/auth/AdminSignInModal";
+import { api } from "@/lib/api";
 import {
   KNOWN_TENANTS,
   TenantInfo,
@@ -47,6 +48,47 @@ export default function PlatformOwnerAdminPage() {
   const [selectedTenant, setSelectedTenant] = useState<TenantInfo | null>(null);
   const [inspectUsers, setInspectUsers] = useState<UserProfile[]>([]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [activeGrants, setActiveGrants] = useState<Record<string, { expires_at: number; remaining_seconds: number }>>({});
+  const [emergencySession, setEmergencySession] = useState<{
+    tenant: TenantInfo;
+    projects: any[];
+    loading: boolean;
+    error?: string;
+  } | null>(null);
+
+  const fetchGrants = async () => {
+    try {
+      const res = await api.listActiveGrants();
+      if (res && res.grants) {
+        setActiveGrants(res.grants);
+      } else {
+        setActiveGrants({});
+      }
+    } catch {
+      setActiveGrants({});
+    }
+  };
+
+  useEffect(() => {
+    fetchGrants();
+    const interval = setInterval(fetchGrants, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleOpenEmergencySession = async (t: TenantInfo) => {
+    setEmergencySession({ tenant: t, projects: [], loading: true });
+    try {
+      const projs = await api.listProjects(t.tenant_id);
+      setEmergencySession({ tenant: t, projects: projs, loading: false });
+    } catch (err: any) {
+      setEmergencySession({
+        tenant: t,
+        projects: [],
+        loading: false,
+        error: err?.message || "Failed to load tenant projects.",
+      });
+    }
+  };
 
   const checkAuth = () => {
     const authorized = isPlatformOwner();
@@ -64,11 +106,6 @@ export default function PlatformOwnerAdminPage() {
   const handleInspect = (t: TenantInfo) => {
     setSelectedTenant(t);
     setInspectUsers(getCompanyUsers(t.tenant_id));
-  };
-
-  const handleImpersonate = (tenantId: string) => {
-    setTenant(tenantId, `admin@${tenantId}.com`);
-    window.location.href = "/dashboard";
   };
 
   const filteredTenants = tenants.filter(t => 
@@ -254,6 +291,67 @@ export default function PlatformOwnerAdminPage() {
               </div>
             </div>
 
+            {/* Emergency Tenant Access Grants Banner */}
+            {Object.keys(activeGrants).length > 0 && (
+              <div className="glass rounded-2xl border border-amber-500/50 bg-amber-500/10 p-5 mb-6 animate-in fade-in">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      <ShieldAlert className="h-6 w-6 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-amber-300">Active Emergency Access Authorization</h4>
+                        <span className="rounded-full bg-amber-500/25 px-2.5 py-0.5 text-[10px] font-mono text-amber-200 border border-amber-500/40 font-bold animate-pulse">
+                          LIVE GRANT
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-200/80 mt-1">
+                        The following tenant(s) have granted Team CodeX temporary emergency access to resolve an incident or anomaly.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(activeGrants).map(([tid, info]) => {
+                      const tenantObj = KNOWN_TENANTS.find((k) => k.tenant_id === tid) || {
+                        tenant_id: tid,
+                        name: tid,
+                        plan: "custom",
+                      };
+                      return (
+                        <div key={tid} className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              if (typeof document !== "undefined") {
+                                document.cookie = `fg-emergency-tenant=${tid}; path=/; max-age=7200`;
+                              }
+                              if (typeof window !== "undefined") {
+                                window.localStorage.setItem("fg-tenant", tid);
+                              }
+                              window.location.href = "/projects";
+                            }}
+                            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2 text-xs font-bold text-black shadow-lg hover:brightness-110 transition-all animate-pulse"
+                            title="Directly enter tenant projects and workspace"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span>Enter {tenantObj.name} Workspace ({Math.ceil(info.remaining_seconds / 60)}m)</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenEmergencySession(tenantObj)}
+                            className="flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-surface/50 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-all"
+                            title="Quick diagnostics preview modal"
+                          >
+                            <ShieldAlert className="h-3.5 w-3.5" />
+                            <span>Quick Diagnostics</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Search & Companies Ledger Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
@@ -329,13 +427,42 @@ export default function PlatformOwnerAdminPage() {
                         >
                           Inspect Audit
                         </button>
-                        <button
-                          onClick={() => handleImpersonate(t.tenant_id)}
-                          className="rounded-lg border border-rule glass px-2.5 py-1.5 text-xs text-mute hover:text-ink hover:border-ink/40 transition-colors"
-                          title="Log in to this tenant's dashboard"
-                        >
-                          Switch to Org →
-                        </button>
+                        {activeGrants[t.tenant_id] ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                if (typeof document !== "undefined") {
+                                  document.cookie = `fg-emergency-tenant=${t.tenant_id}; path=/; max-age=7200`;
+                                }
+                                if (typeof window !== "undefined") {
+                                  window.localStorage.setItem("fg-tenant", t.tenant_id);
+                                }
+                                window.location.href = "/projects";
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-xs font-bold text-black shadow-md hover:brightness-110 transition-all animate-pulse"
+                              title="Enter full tenant workspace directly"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              Enter Workspace ({Math.ceil(activeGrants[t.tenant_id].remaining_seconds / 60)}m)
+                            </button>
+                            <button
+                              onClick={() => handleOpenEmergencySession(t)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-all"
+                              title="View project dossiers and quick diagnostics"
+                            >
+                              <ShieldAlert className="h-3 w-3 text-amber-400" />
+                              Diagnostics
+                            </button>
+                          </>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-rule glass px-2.5 py-1.5 text-[11px] font-mono text-mute"
+                            title="Zero-Knowledge Privacy: Super Admins cannot access customer projects without tenant emergency authorization"
+                          >
+                            <Lock className="h-3 w-3 text-emerald-400" />
+                            Private Boundary
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -419,12 +546,10 @@ export default function PlatformOwnerAdminPage() {
                   </div>
 
                   <div className="flex items-center justify-between border-t border-white/10 pt-4">
-                    <button
-                      onClick={() => handleImpersonate(selectedTenant.tenant_id)}
-                      className="rounded-xl bg-gradient-to-r from-forest to-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg transition-all hover:brightness-110"
-                    >
-                      Enter {selectedTenant.name} Dashboard →
-                    </button>
+                    <div className="flex items-center gap-2 text-xs text-white/60">
+                      <Lock className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <span>Zero-Knowledge: Topologies & code diffs remain private to {selectedTenant.name}.</span>
+                    </div>
                     <button
                       onClick={() => setSelectedTenant(null)}
                       className="rounded-xl border border-white/15 bg-white/10 px-5 py-2.5 text-xs font-semibold text-white/80 transition-colors hover:bg-white/20 hover:text-white"
@@ -435,11 +560,129 @@ export default function PlatformOwnerAdminPage() {
                 </div>
               </div>
             )}
+
+            {/* Emergency Incident Diagnostics Modal */}
+            {emergencySession && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+                <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-amber-500/40 bg-[#0d1310] text-white p-8 shadow-2xl">
+                  {/* Top accent amber bar */}
+                  <div className="absolute top-0 left-0 h-1.5 w-full bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600" />
+
+                  <button
+                    onClick={() => setEmergencySession(null)}
+                    className="absolute right-6 top-6 rounded-full p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+
+                  <div className="flex items-center gap-3.5 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                      <ShieldAlert className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-white">
+                          Emergency Incident Workspace: {emergencySession.tenant.name}
+                        </h3>
+                        <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300 border border-amber-500/40 font-bold uppercase">
+                          Authorized Window
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-300/80 mt-0.5">
+                        Tenant granted temporary elevation. Team CodeX may inspect customer topologies & execute diagnostic simulations.
+                      </p>
+                    </div>
+                  </div>
+
+                  {emergencySession.loading ? (
+                    <div className="flex items-center justify-center py-12 text-xs text-white/60 gap-3">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
+                      <span>Loading customer project dossiers under temporary authorization...</span>
+                    </div>
+                  ) : emergencySession.error ? (
+                    <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-xs text-red-300">
+                      {emergencySession.error}
+                    </div>
+                  ) : emergencySession.projects.length === 0 ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-xs text-white/60">
+                      <p className="font-semibold text-white/80">No active projects found for this tenant.</p>
+                      <p className="mt-1">The tenant has not registered microservice topologies yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                      {emergencySession.projects.map((proj: any) => (
+                        <div
+                          key={proj.slug || proj.name}
+                          className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-all hover:border-amber-500/30 flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-white text-sm">{proj.name}</span>
+                              <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-mono text-white/70">
+                                {proj.slug}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-white/60 mt-1">
+                              <span>Services: <strong className="text-white">{proj.services || 6}</strong></span>
+                              <span>Score: <strong className="text-emerald-400">{proj.score || 85}/100</strong></span>
+                              {proj.last_sim && (
+                                <span className="font-mono text-[11px] text-white/40">{proj.last_sim}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`http://localhost:3000/projects/${proj.slug}`}
+                              target="_blank"
+                              className="flex items-center gap-1 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-all"
+                            >
+                              <span>View Topology</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between border-t border-white/10 pt-4 mt-6">
+                    <div className="text-xs text-amber-400/80 font-mono flex items-center gap-2">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>Access auto-revokes when duration elapses.</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        onClick={() => {
+                          if (typeof document !== "undefined") {
+                            document.cookie = `fg-emergency-tenant=${emergencySession.tenant.tenant_id}; path=/; max-age=7200`;
+                          }
+                          if (typeof window !== "undefined") {
+                            window.localStorage.setItem("fg-tenant", emergencySession.tenant.tenant_id);
+                          }
+                          window.location.href = "/projects";
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2 text-xs font-bold text-black shadow-lg hover:brightness-110 transition-all"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span>Enter Full Tenant Workspace</span>
+                      </button>
+                      <button
+                        onClick={() => setEmergencySession(null)}
+                        className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+                      >
+                        Close Session
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
 
-      <SignInModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <AdminSignInModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }

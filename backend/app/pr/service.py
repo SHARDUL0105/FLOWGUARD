@@ -12,9 +12,9 @@ from .heal import heal as heal_pr_edges
 from .gate import gate as run_gate
 
 
-def analyze_pr(pr_id: int):
+def analyze_pr(pr_id: int, tenant_id: str = "demo"):
     """Returns the AnalyzeResponse dict (Section 10) or None if the PR does not exist."""
-    pr = get_pr(pr_id)
+    pr = get_pr(pr_id, tenant_id)
     if not pr:
         return None
     current = get_pr_edges(pr_id)
@@ -33,14 +33,14 @@ def analyze_pr(pr_id: int):
               "verdict": "regression" if score_pr < score_base else "pass",
               "per_scenario": per, "findings": findings,
               "cascade_path": ["database", "inventory", "order", "gateway", "frontend"] if findings else [],
-              "diff": pr_diff(pr_id), "comment": ""}
+              "diff": pr_diff(pr_id, tenant_id), "comment": ""}
     result["comment"] = render_comment(result)
     return result
 
 
-def heal_pr(pr_id: int):
+def heal_pr(pr_id: int, tenant_id: str = "demo"):
     """Returns the HealResponse dict (Section 10) or None if the PR does not exist."""
-    pr = get_pr(pr_id)
+    pr = get_pr(pr_id, tenant_id)
     if not pr:
         return None
     current = get_pr_edges(pr_id)

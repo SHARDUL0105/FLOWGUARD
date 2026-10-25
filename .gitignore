@@ -8,3 +8,5 @@ node_modules/
 .DS_Store
 /Reference
 /Process_VaiR.md
+
+backend/venv/

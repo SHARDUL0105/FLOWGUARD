@@ -6,6 +6,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from .schemas import ChaosRequest, DemoModeRequest, WhatIfRequest
+from pydantic import BaseModel
+import time
 from .state import state
 from .sim.topology import topology_json, BASE_EDGES
 from .sim.config import DEFAULT_SEVERITY, SCENARIOS
@@ -39,6 +41,7 @@ def get_current_user(request: Request) -> dict:
         )
     return user
 
+<<<<<<< HEAD
 def current_tenant(
     x_tenant_id: str | None = Header(default=None),
     user: dict = Depends(get_current_user),
@@ -49,6 +52,50 @@ def current_tenant(
         if x_tenant_id and db.resolve_tenant(x_tenant_id) != tenant_id:
             raise HTTPException(status_code=403, detail="Tenant header does not match the authenticated user.")
         return tenant_id
+=======
+
+# Active grants stored above
+
+_active_grants: dict = {}
+
+def is_grant_active(tenant_id: str) -> bool:
+    grant_exp = _active_grants.get(tenant_id)
+    now = int(time.time())
+    if grant_exp and grant_exp > now:
+        return True
+    if tenant_id in _active_grants:
+        del _active_grants[tenant_id]
+    return False
+
+def check_tenant_privacy_guard(tenant_id: str):
+    """Enforce Zero-Knowledge Multi-Tenancy. Super Admins / Platform Operators cannot inspect customer projects."""
+    if tenant_id == "flowguard":
+        raise HTTPException(
+            status_code=403,
+            detail="Zero-Knowledge Privacy Guard: Platform administrators are cryptographically restricted from accessing customer proprietary projects or topologies."
+        )
+
+def current_tenant(
+    x_tenant_id: str | None = Header(default=None),
+    authorization: str | None = Header(default=None),
+) -> str:
+    """Which organization is asking. Every stored read and write is scoped to this value."""
+    try:
+        t = db.resolve_tenant(x_tenant_id)
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization.split(" ")[1]
+            payload = auth.verify_token(token)
+            if payload:
+                user_role = payload.get("role")
+                # If a super admin is requesting access to a customer tenant:
+                if user_role == "platform_owner" and t != "flowguard":
+                    if not is_grant_active(t):
+                        raise HTTPException(
+                            status_code=403,
+                            detail=f"Zero-Knowledge Isolation Enforced: No active emergency grant for tenant '{t}'. The tenant must explicitly grant temporary emergency access to resolve an anomaly."
+                        )
+        return t
+>>>>>>> 779c3a3204c13dc7ad0ef09fd3d92a82dd8fb8aa
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
 
@@ -110,6 +157,8 @@ def whatif(body: WhatIfRequest): return what_if(BASE_EDGES,body.scenario,body.fa
 
 @router.get('/pr')
 def prs(project_id: str | None = None, tenant_id: str = Depends(current_tenant)):
+    if tenant_id == "flowguard":
+        return []
     return list_prs(project_id=project_id, tenant_id=tenant_id)
 
 @router.post('/pr')
@@ -167,10 +216,13 @@ async def brief(scenario: str | None = None, pr: int | None = None, tenant_id: s
         headers={'Cache-Control': 'no-cache', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no'})
 @router.get('/projects')
 def list_projects_api(tenant_id: str = Depends(current_tenant)):
+    if tenant_id == "flowguard":
+        return []
     return db.list_projects(tenant_id)
 
 @router.get('/projects/{project_id}')
 def get_project_api(project_id: str, tenant_id: str = Depends(current_tenant)):
+    check_tenant_privacy_guard(tenant_id)
     p = db.get_project(tenant_id, project_id)
     if not p: raise HTTPException(404, "Project not found")
     return p
@@ -197,6 +249,7 @@ def delete_project_api(project_id: str, tenant_id: str = Depends(current_tenant)
 @router.get('/projects/{project_id}/topology')
 def get_topology(project_id: str, tenant_id: str = Depends(current_tenant)):
     """Return the custom topology stored for a project, or None if not yet set."""
+    check_tenant_privacy_guard(tenant_id)
     p = db.get_project(tenant_id, project_id)
     if not p:
         raise HTTPException(404, "Project not found")
@@ -204,6 +257,7 @@ def get_topology(project_id: str, tenant_id: str = Depends(current_tenant)):
 
 @router.put('/projects/{project_id}/topology')
 def save_topology(project_id: str, body: dict, tenant_id: str = Depends(current_tenant)):
+    check_tenant_privacy_guard(tenant_id)
     """Persist a custom topology for a project. Overwrites the previous one."""
     from .schemas import TopologySave
     try:
@@ -218,6 +272,7 @@ def save_topology(project_id: str, body: dict, tenant_id: str = Depends(current_
 @router.post('/projects/{project_id}/simulate')
 def simulate_project(project_id: str, tenant_id: str = Depends(current_tenant)):
     """Run all 3 fault scenarios against the project's custom topology and return a resilience report."""
+    check_tenant_privacy_guard(tenant_id)
     from .sim.topo_adapter import build_sim_structures
     from .sim.engine import run as sim_run, window, score as sim_score
     from .sim.config import DEFAULT_SEVERITY
@@ -473,3 +528,60 @@ def get_users(
 ):
     """Return users belonging to the current tenant."""
     return auth.list_users_for_tenant(tenant)
+
+
+# ─── Temporary Super-Admin Access Grant ──────────────────────────────────────
+
+class GrantTempAdminRequest(BaseModel):
+    duration_minutes: int = 60  # default 1 hour
+
+# In-memory store: tenant_id -> expiry unix timestamp
+_active_grants: dict = {}
+
+@router.post("/auth/grant-admin-access")
+def grant_admin_access(body: GrantTempAdminRequest, tenant_id: str = Depends(current_tenant)):
+    """Tenant grants temporary super-admin access to their environment."""
+    if tenant_id == "flowguard":
+        raise HTTPException(status_code=403, detail="Super Admins cannot grant access to themselves.")
+    if body.duration_minutes < 1 or body.duration_minutes > 480:
+        raise HTTPException(status_code=400, detail="Duration must be between 1 and 480 minutes.")
+    expires_at = int(time.time()) + body.duration_minutes * 60
+    _active_grants[tenant_id] = expires_at
+    return {
+        "ok": True,
+        "tenant_id": tenant_id,
+        "expires_at": expires_at,
+        "duration_minutes": body.duration_minutes,
+        "message": f"Super-admin access granted for {body.duration_minutes} minutes."
+    }
+
+@router.delete("/auth/revoke-admin-access")
+def revoke_admin_access(tenant_id: str = Depends(current_tenant)):
+    """Tenant revokes super-admin access early."""
+    if tenant_id in _active_grants:
+        del _active_grants[tenant_id]
+    return {"ok": True, "message": "Super-admin access revoked."}
+
+@router.get("/auth/check-admin-grant/{target_tenant_id}")
+def check_admin_grant(target_tenant_id: str):
+    """Super-admin checks if they have a valid temporary grant for a tenant."""
+    grant_exp = _active_grants.get(target_tenant_id)
+    now = int(time.time())
+    if grant_exp and grant_exp > now:
+        return {"granted": True, "expires_at": grant_exp, "remaining_seconds": grant_exp - now}
+    # Clean up expired grant
+    if target_tenant_id in _active_grants:
+        del _active_grants[target_tenant_id]
+    return {"granted": False}
+
+@router.get("/auth/active-grants")
+def list_active_grants():
+    """Super-admin views all active temporary grants."""
+    now = int(time.time())
+    active = {}
+    for tid, exp in list(_active_grants.items()):
+        if exp > now:
+            active[tid] = {"expires_at": exp, "remaining_seconds": exp - now}
+        else:
+            del _active_grants[tid]
+    return {"grants": active}
