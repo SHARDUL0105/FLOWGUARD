@@ -5,9 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import ThemeToggle from "./ThemeToggle";
-import SignInModal from "../auth/SignInModal";
+import AdminSignInModal from "../auth/AdminSignInModal";
+import TenantSignInModal from "../auth/TenantSignInModal";
+import GrantAdminModal from "../projects/GrantAdminModal";
 import { getTenant, getTenantInfo, getUserEmail, getUserRole, getUserName, isPlatformOwner } from "@/lib/tenant";
-import { User, Building, LogIn, ShieldCheck } from "lucide-react";
+import { api } from "@/lib/api";
+import { User, Building, LogIn, ShieldCheck, ShieldAlert } from "lucide-react";
 
 export function Wordmark({ className }: { className?: string }) {
   return (
@@ -28,7 +31,6 @@ const BASE_LINKS = [
   { label: "Simulations", href: "/simulations" },
   { label: "Alerts", href: "/alerts" },
   { label: "Pull requests", href: "/pull-requests" },
-  { label: "Docs", href: "/docs" },
 ];
 
 /** Fixed, frosted-glass bar that stays visible on every page. A spacer keeps in-flow pages from sliding under it;
@@ -43,6 +45,8 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
   const [userRole, setUserRole] = useState<string>("company_engineer");
   const [isOwner, setIsOwner] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [isGrantOpen, setIsGrantOpen] = useState(false);
+  const [grantActive, setGrantActive] = useState<{ remaining: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -65,8 +69,49 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
     return () => window.removeEventListener("fg-tenant-change", handleTenantChange as EventListener);
   }, []);
 
-  const navLinks = mounted && isOwner 
-    ? [{ label: "Master Control", href: "/admin" }, ...BASE_LINKS]
+  // Poll for active super-admin emergency grant for this tenant
+  useEffect(() => {
+    if (!mounted || isOwner || tenantId === "flowguard") return;
+    const checkGrant = async () => {
+      try {
+        const res = await api.checkAdminGrant(tenantId);
+        if (res.granted && res.remaining_seconds && res.remaining_seconds > 0) {
+          setGrantActive({ remaining: res.remaining_seconds });
+        } else {
+          setGrantActive(null);
+        }
+      } catch {
+        setGrantActive(null);
+      }
+    };
+    checkGrant();
+    const interval = setInterval(checkGrant, 8000);
+    return () => clearInterval(interval);
+  }, [mounted, isOwner, tenantId]);
+
+  const [emergencyTenantCookie, setEmergencyTenantCookie] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(/(?:^|; )fg-emergency-tenant=([^;]*)/);
+      setEmergencyTenantCookie(match ? decodeURIComponent(match[1]) : null);
+    }
+  }, [path]);
+
+  const handleExitEmergencyMode = () => {
+    if (typeof document !== "undefined") {
+      document.cookie = "fg-emergency-tenant=; path=/; max-age=0";
+    }
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("fg-tenant", "flowguard");
+    }
+    window.location.href = "/admin";
+  };
+
+  const navLinks = mounted && isOwner && !emergencyTenantCookie
+    ? [
+        { label: "Master Control", href: "/admin" },
+      ]
     : BASE_LINKS;
 
   // Switch to a dark-tinted bar while it sits over a dark section (anything marked data-nav-tone="dark").
@@ -94,6 +139,8 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
 
   const tenantInfo = getTenantInfo(tenantId);
 
+  const isAdminInstance = process.env.NEXT_PUBLIC_ADMIN === "true";
+
   return (
     <>
       <header ref={ref} data-tone="light" className={cn("glass fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between rounded-none border-x-0 border-t-0 px-6 text-[12.5px] text-ink md:px-10", className)}>
@@ -107,6 +154,45 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
         </nav>
         <div className="flex items-center gap-4 sm:gap-5">
           <ThemeToggle />
+
+          {/* Active Emergency Tenant Inspection Indicator for Super Admin */}
+          {mounted && emergencyTenantCookie && (
+            <div className="flex items-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/15 px-3 py-1.5 text-xs text-amber-300 font-semibold shadow-sm animate-pulse">
+              <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Inspecting:</span>
+              <span className="font-mono uppercase font-bold text-white">{emergencyTenantCookie}</span>
+              <button
+                onClick={handleExitEmergencyMode}
+                className="ml-1 rounded-md bg-amber-500/30 px-2 py-0.5 text-[10px] text-white hover:bg-amber-500/60 transition-colors"
+                title="Exit Emergency Inspection and return to Master Control"
+              >
+                Exit Session
+              </button>
+            </div>
+          )}
+
+          {/* Emergency Super-Admin Grant Button for Tenants */}
+          {mounted && !isAdminInstance && !isOwner && tenantId !== "flowguard" && (
+            <button
+              onClick={() => setIsGrantOpen(true)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-all",
+                grantActive
+                  ? "border-amber-500/60 bg-amber-500/20 text-amber-300 font-semibold shadow-md animate-pulse"
+                  : "border-amber-500/30 bg-amber-500/10 text-amber-400 hover:border-amber-500/60 hover:bg-amber-500/20"
+              )}
+              title={
+                grantActive
+                  ? `Super-Admin emergency access is ACTIVE (approx ${Math.ceil(grantActive.remaining / 60)}m left)`
+                  : "Grant temporary Super-Admin access for anomaly resolution"
+              }
+            >
+              <ShieldAlert className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">
+                {grantActive ? `Admin Access (${Math.ceil(grantActive.remaining / 60)}m)` : "Emergency Access"}
+              </span>
+            </button>
+          )}
           
           {/* Sign in / Active Tenant Button */}
           <button
@@ -146,8 +232,15 @@ export default function SiteNav({ floating = false, className }: { floating?: bo
       </header>
       {!floating && <div className="h-16 shrink-0" aria-hidden />}
 
-      {/* Auth & Tenant Modal */}
-      <SignInModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      {/* Auth Modal — show the correct one based on which instance is running */}
+      {isAdminInstance ? (
+        <AdminSignInModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      ) : (
+        <TenantSignInModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      )}
+
+      {/* Emergency Super-Admin Grant Modal for Tenant */}
+      <GrantAdminModal isOpen={isGrantOpen} onClose={() => setIsGrantOpen(false)} />
     </>
   );
 }
